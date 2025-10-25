@@ -50,40 +50,50 @@ class Team:
 # ==================== RANKING FORMULA ====================
 
 class RankingFormula:
-    """Encapsulates the ranking calculation logic."""
+    """Encapsulates the ranking calculation logic with configurable parameters."""
     
-    @staticmethod
-    def calculate(game_result: GameResult, opponent_rank: float) -> float:
+    # Class variables that can be modified to customize the formula
+    BASE_VALUE = 1.0
+    WIN_LOSS_MULTIPLIER = 1.0  # Applied to base value (+1 for win, -1 for loss)
+    MARGIN_THRESHOLD_1 = 8
+    MARGIN_MULTIPLIER_1 = 1.0
+    MARGIN_THRESHOLD_2 = 16
+    MARGIN_MULTIPLIER_2 = 1.5
+    MARGIN_MULTIPLIER_3 = 2.0
+    OPPONENT_STRENGTH_DIVISOR = 100.0
+    
+    @classmethod
+    def calculate(cls, game_result: GameResult, opponent_rank: float) -> float:
         """
         Calculate ranking value for a single game.
         
         Rules:
         - Non-FBS wins: 0 points (no credit for beating lower divisions)
-        - Win/Loss: +1 or -1
-        - Margin: 1x (≤8), 1.5x (9-16), 2x (>16)
-        - Opponent strength: +rank/100 (added bonus)
+        - Win/Loss: +1 or -1 (multiplied by WIN_LOSS_MULTIPLIER)
+        - Margin: Configurable thresholds and multipliers
+        - Opponent strength: +rank/OPPONENT_STRENGTH_DIVISOR (added bonus)
         """
         # Non-FBS wins don't count
         if game_result.won and not game_result.opponent_fbs:
             return 0.0
         
-        base = 1.0
-        win_mult = 1 if game_result.won else -1
-        margin_mult = RankingFormula._get_margin_multiplier(game_result.margin)
-        opponent_bonus = opponent_rank / 100.0
+        base = cls.BASE_VALUE
+        win_mult = cls.WIN_LOSS_MULTIPLIER if game_result.won else -cls.WIN_LOSS_MULTIPLIER
+        margin_mult = cls._get_margin_multiplier(game_result.margin)
+        opponent_bonus = opponent_rank / cls.OPPONENT_STRENGTH_DIVISOR
         
         return base * win_mult * margin_mult + opponent_bonus
     
-    @staticmethod
-    def _get_margin_multiplier(margin: int) -> float:
+    @classmethod
+    def _get_margin_multiplier(cls, margin: int) -> float:
         """Get margin multiplier based on point differential."""
         abs_margin = abs(margin)
-        if abs_margin <= 8:
-            return 1.0
-        elif abs_margin <= 16:
-            return 1.5
+        if abs_margin <= cls.MARGIN_THRESHOLD_1:
+            return cls.MARGIN_MULTIPLIER_1
+        elif abs_margin <= cls.MARGIN_THRESHOLD_2:
+            return cls.MARGIN_MULTIPLIER_2
         else:
-            return 2.0
+            return cls.MARGIN_MULTIPLIER_3
 
 
 # ==================== API CLIENT ====================
