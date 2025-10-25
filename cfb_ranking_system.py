@@ -314,7 +314,7 @@ if __name__ == "__main__":
     # Load games
     system.load_games_from_api(
         api=api,
-        year=2024,
+        year=2025,
         season_type="regular",
         classification="fbs"
     )

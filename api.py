@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional
 import uvicorn
+from cfb_ranking_system import CFBDataAPI, RankingSystem
 
 # Import your existing ranking system classes
 # (You'll need to have the ranking system in a separate module)
