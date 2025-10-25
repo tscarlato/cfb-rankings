@@ -131,6 +131,14 @@
             <!-- Footer -->
             <div class="mt-6 bg-white rounded-lg shadow-lg p-4 text-sm text-slate-600">
                 <p class="mb-2"><strong>Rating Formula:</strong> Base value × Win/Loss × Margin Factor + Opponent Strength</p>
+                <h1>Current ranking weights</h1>
+                <ul>                   
+                    <li>Non-FBS wins: 0 points (no credit for beating lower divisions)</li>
+                    <li>Win/Loss: +1 or -1</li>
+                    <li>Margin: 1x (≤8), 1.5x (9-16), 2x (>16)</li>
+                    <li>Opponent strength: +rank/100 </li>
+                </ul>
+
                 <p>Showing <span id="teamCount">0</span> teams</p>
             </div>
         </div>
