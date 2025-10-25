@@ -1,9 +1,10 @@
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import List, Optional
 import uvicorn
-from cfb_ranking_system import CFBDataAPI, RankingSystem
 
 # Import your existing ranking system classes
 # (You'll need to have the ranking system in a separate module)
@@ -126,16 +127,8 @@ def format_team_response(team, rank: int) -> TeamResponse:
 
 @app.get("/")
 async def root():
-    """Root endpoint with API information."""
-    return {
-        "message": "College Football Rankings API",
-        "version": "1.0.0",
-        "endpoints": {
-            "/rankings": "Get all team rankings",
-            "/team/{team_name}": "Get specific team details",
-            "/docs": "Interactive API documentation"
-        }
-    }
+    """Serve the frontend HTML."""
+    return FileResponse('cfb-rankings.html')
 
 @app.get("/rankings", response_model=RankingsResponse)
 async def get_rankings(
