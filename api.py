@@ -25,9 +25,8 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:3000",
         "http://localhost:8000",
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:8000",
-        "*"  # Allow all for development
+        "https://*.railway.app",  # Add Railway domains
+        "*"  # This allows all origins - good for testing
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -216,6 +215,6 @@ async def health_check():
     return {"status": "healthy"}
 
 if __name__ == "__main__":
-    # Run with: python api.py
-    # or: uvicorn api:app --reload
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    import os
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port)
