@@ -53,47 +53,48 @@ class RankingFormula:
     """Encapsulates the ranking calculation logic with configurable parameters."""
     
     # Class variables that can be modified to customize the formula
-    BASE_VALUE = 1.0
-    WIN_LOSS_MULTIPLIER = 1.0  # Applied to base value (+1 for win, -1 for loss)
-    MARGIN_THRESHOLD_1 = 8
-    MARGIN_MULTIPLIER_1 = 1.0
-    MARGIN_THRESHOLD_2 = 16
-    MARGIN_MULTIPLIER_2 = 1.5
-    MARGIN_MULTIPLIER_3 = 2.0
-    OPPONENT_STRENGTH_DIVISOR = 100.0
+    WIN_LOSS_MULTIPLIER = 1.0
+    ONE_SCORE_MULTIPLIER = 1.0      # Margin ≤ 8 points
+    TWO_SCORE_MULTIPLIER = 1.3      # Margin 9-16 points
+    THREE_SCORE_MULTIPLIER = 1.5    # Margin > 16 points
+    STRENGTH_OF_SCHEDULE_MULTIPLIER = 1.0
     
     @classmethod
     def calculate(cls, game_result: GameResult, opponent_rank: float) -> float:
         """
         Calculate ranking value for a single game.
         
+        Formula: (Win/Loss × Margin Multiplier) + ((Opponent Rank ÷ 100) × SoS Multiplier)
+        
         Rules:
         - Non-FBS wins: 0 points (no credit for beating lower divisions)
         - Win/Loss: +1 or -1 (multiplied by WIN_LOSS_MULTIPLIER)
-        - Margin: Configurable thresholds and multipliers
-        - Opponent strength: +rank/OPPONENT_STRENGTH_DIVISOR (added bonus)
+        - Margin Multipliers:
+          * 1-score game (≤8 pts): ONE_SCORE_MULTIPLIER
+          * 2-score game (9-16 pts): TWO_SCORE_MULTIPLIER  
+          * 3+ score game (>16 pts): THREE_SCORE_MULTIPLIER
+        - Opponent strength: (rank ÷ 100) × STRENGTH_OF_SCHEDULE_MULTIPLIER
         """
         # Non-FBS wins don't count
         if game_result.won and not game_result.opponent_fbs:
             return 0.0
         
-        base = cls.BASE_VALUE
         win_mult = cls.WIN_LOSS_MULTIPLIER if game_result.won else -cls.WIN_LOSS_MULTIPLIER
         margin_mult = cls._get_margin_multiplier(game_result.margin)
-        opponent_bonus = opponent_rank / cls.OPPONENT_STRENGTH_DIVISOR
+        opponent_bonus = (opponent_rank / 100.0) * cls.STRENGTH_OF_SCHEDULE_MULTIPLIER
         
-        return base * win_mult * margin_mult + opponent_bonus
+        return win_mult * margin_mult + opponent_bonus
     
     @classmethod
     def _get_margin_multiplier(cls, margin: int) -> float:
-        """Get margin multiplier based on point differential."""
+        """Get margin multiplier based on point differential (score categories)."""
         abs_margin = abs(margin)
-        if abs_margin <= cls.MARGIN_THRESHOLD_1:
-            return cls.MARGIN_MULTIPLIER_1
-        elif abs_margin <= cls.MARGIN_THRESHOLD_2:
-            return cls.MARGIN_MULTIPLIER_2
+        if abs_margin <= 8:
+            return cls.ONE_SCORE_MULTIPLIER
+        elif abs_margin <= 16:
+            return cls.TWO_SCORE_MULTIPLIER
         else:
-            return cls.MARGIN_MULTIPLIER_3
+            return cls.THREE_SCORE_MULTIPLIER
 
 
 # ==================== API CLIENT ====================

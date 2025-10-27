@@ -51,14 +51,11 @@ class RankingsResponse(BaseModel):
     classification: str
 
 class FormulaParams(BaseModel):
-    base_value: float = 1.0
-    win_loss_multiplier: float = 1.0  # Applied to base for W (+1) or L (-1)
-    margin_threshold_1: int = 8       # Margin ≤ this gets 1x
-    margin_multiplier_1: float = 1.0
-    margin_threshold_2: int = 16      # Margin ≤ this gets multiplier 2
-    margin_multiplier_2: float = 1.5
-    margin_multiplier_3: float = 2.0  # Margin > threshold 2 gets this
-    opponent_strength_divisor: float = 100.0  # opponent_rank / this value
+    win_loss_multiplier: float = 1.0
+    one_score_multiplier: float = 1.0      # Margin ≤ 8
+    two_score_multiplier: float = 1.3      # Margin 9-16
+    three_score_multiplier: float = 1.5    # Margin > 16
+    strength_of_schedule_multiplier: float = 1.0
 
 # Cache for storing ranking system (could use Redis in production)
 ranking_cache = {}
@@ -75,7 +72,7 @@ def get_or_create_rankings(
     # Include formula params in cache key
     formula_key = ""
     if formula_params:
-        formula_key = f"_{formula_params.base_value}_{formula_params.win_loss_multiplier}_{formula_params.margin_multiplier_1}_{formula_params.margin_multiplier_2}_{formula_params.margin_multiplier_3}_{formula_params.opponent_strength_divisor}"
+        formula_key = f"_{formula_params.win_loss_multiplier}_{formula_params.one_score_multiplier}_{formula_params.two_score_multiplier}_{formula_params.three_score_multiplier}_{formula_params.strength_of_schedule_multiplier}"
     
     cache_key = f"{year}_{season_type}_{classification}_{week}{formula_key}"
     
@@ -87,14 +84,11 @@ def get_or_create_rankings(
     
     # Update formula if custom params provided
     if formula_params:
-        RankingFormula.BASE_VALUE = formula_params.base_value
         RankingFormula.WIN_LOSS_MULTIPLIER = formula_params.win_loss_multiplier
-        RankingFormula.MARGIN_THRESHOLD_1 = formula_params.margin_threshold_1
-        RankingFormula.MARGIN_MULTIPLIER_1 = formula_params.margin_multiplier_1
-        RankingFormula.MARGIN_THRESHOLD_2 = formula_params.margin_threshold_2
-        RankingFormula.MARGIN_MULTIPLIER_2 = formula_params.margin_multiplier_2
-        RankingFormula.MARGIN_MULTIPLIER_3 = formula_params.margin_multiplier_3
-        RankingFormula.OPPONENT_STRENGTH_DIVISOR = formula_params.opponent_strength_divisor
+        RankingFormula.ONE_SCORE_MULTIPLIER = formula_params.one_score_multiplier
+        RankingFormula.TWO_SCORE_MULTIPLIER = formula_params.two_score_multiplier
+        RankingFormula.THREE_SCORE_MULTIPLIER = formula_params.three_score_multiplier
+        RankingFormula.STRENGTH_OF_SCHEDULE_MULTIPLIER = formula_params.strength_of_schedule_multiplier
     
     # Use provided key or default
     if api_key is None:
@@ -159,28 +153,22 @@ async def get_rankings(
     top_n: Optional[int] = Query(None, description="Limit to top N teams"),
     api_key: Optional[str] = Query(None, description="College Football Data API key"),
     # Formula parameters
-    base_value: float = Query(1.0, description="Base value for each game"),
     win_loss_multiplier: float = Query(1.0, description="Multiplier applied to base (+1 for win, -1 for loss)"),
-    margin_threshold_1: int = Query(8, description="First margin threshold"),
-    margin_multiplier_1: float = Query(1.0, description="Multiplier for margins ≤ threshold 1"),
-    margin_threshold_2: int = Query(16, description="Second margin threshold"),
-    margin_multiplier_2: float = Query(1.5, description="Multiplier for margins between thresholds"),
-    margin_multiplier_3: float = Query(2.0, description="Multiplier for margins > threshold 2"),
-    opponent_strength_divisor: float = Query(100.0, description="Divisor for opponent strength bonus")
+    one_score_multiplier: float = Query(1.0, description="Multiplier for 1-score games (≤8 pts)"),
+    two_score_multiplier: float = Query(1.3, description="Multiplier for 2-score games (9-16 pts)"),
+    three_score_multiplier: float = Query(1.5, description="Multiplier for 3+ score games (>16 pts)"),
+    strength_of_schedule_multiplier: float = Query(1.0, description="Multiplier for strength of schedule impact")
 ):
     """
     Get rankings for all teams with customizable formula parameters.
     """
     try:
         formula_params = FormulaParams(
-            base_value=base_value,
             win_loss_multiplier=win_loss_multiplier,
-            margin_threshold_1=margin_threshold_1,
-            margin_multiplier_1=margin_multiplier_1,
-            margin_threshold_2=margin_threshold_2,
-            margin_multiplier_2=margin_multiplier_2,
-            margin_multiplier_3=margin_multiplier_3,
-            opponent_strength_divisor=opponent_strength_divisor
+            one_score_multiplier=one_score_multiplier,
+            two_score_multiplier=two_score_multiplier,
+            three_score_multiplier=three_score_multiplier,
+            strength_of_schedule_multiplier=strength_of_schedule_multiplier
         )
         
         system = get_or_create_rankings(year, season_type, classification, week, api_key, formula_params)
