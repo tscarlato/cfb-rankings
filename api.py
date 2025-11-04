@@ -1,19 +1,17 @@
-# api.py - Complete version with all features and Railway compatibility
+# api.py - Fixed version
 
 from fastapi import FastAPI, HTTPException, Query, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONRespons, HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel
 from typing import List, Optional
 from sqlalchemy.orm import Session
-from sqlalchemy import or_, and_
-from datetime import datetime
+from sqlalchemy import or_, and_, text  # ADD THIS IMPORT
+from datetime import datetime, timezone  # UPDATE THIS
 import uvicorn
 import logging
 import os
-
 from pathlib import Path
-
 
 from db_models_complete import (
     get_db, Game, Team, CustomRanking, SyncLog, init_db, 
@@ -85,35 +83,60 @@ async def startup_event():
         logger.info("CFB Rankings API Starting Up")
         logger.info("=" * 60)
         
-        # Check database connection
+        # Check if DATABASE_URL is set
+        if not DATABASE_URL:
+            logger.error("✗ DATABASE_URL environment variable not set!")
+            logger.error("  Add PostgreSQL database in Railway dashboard")
+            logger.warning("  Continuing with SQLite fallback (not recommended for production)")
+        
+        # Check database connection with proper SQLAlchemy 2.0 syntax
         logger.info("Testing database connection...")
-        with engine.connect() as conn:
-            conn.execute("SELECT 1")
-        logger.info("✓ Database connection successful!")
+        try:
+            with engine.connect() as conn:
+                conn.execute(text("SELECT 1"))  # FIXED: Use text()
+                conn.commit()
+            logger.info("✓ Database connection successful!")
+        except Exception as e:
+            logger.error(f"✗ Database connection failed: {e}")
+            logger.warning("  App will continue but features requiring database will fail")
         
         # Initialize tables
         logger.info("Initializing database tables...")
-        init_db()
-        logger.info("✓ Database tables initialized!")
+        try:
+            init_db()
+            logger.info("✓ Database tables initialized!")
+        except Exception as e:
+            logger.error(f"✗ Failed to initialize tables: {e}")
+            logger.warning("  Database operations will fail until tables are created")
         
         # Check for existing data
-        db = SessionLocal()
         try:
-            game_count = db.query(Game).count()
-            team_count = db.query(Team).count()
-            logger.info(f"✓ Database contains {team_count} teams and {game_count} games")
-        finally:
-            db.close()
+            db = SessionLocal()
+            try:
+                game_count = db.query(Game).count()
+                team_count = db.query(Team).count()
+                logger.info(f"✓ Database contains {team_count} teams and {game_count} games")
+                
+                if game_count == 0:
+                    logger.warning("⚠ Database has no game data!")
+                    logger.info("  Sync data using: POST /admin/sync?season=2024&sync_type=full")
+            finally:
+                db.close()
+        except Exception as e:
+            logger.warning(f"Could not check database contents: {e}")
         
         # Start scheduler if enabled
         if os.getenv("ENABLE_SCHEDULER", "false").lower() == "true":
-            from apscheduler.schedulers.background import BackgroundScheduler
-            from sync_service_complete import run_daily_sync
-            
-            scheduler = BackgroundScheduler()
-            scheduler.add_job(run_daily_sync, 'cron', hour=6)
-            scheduler.start()
-            logger.info("✓ Background scheduler started (runs daily at 6 AM)")
+            try:
+                from apscheduler.schedulers.background import BackgroundScheduler
+                from sync_service_complete import run_daily_sync
+                
+                scheduler = BackgroundScheduler()
+                scheduler.add_job(run_daily_sync, 'cron', hour=6)
+                scheduler.start()
+                logger.info("✓ Background scheduler started (runs daily at 6 AM)")
+            except Exception as e:
+                logger.warning(f"Could not start scheduler: {e}")
         else:
             logger.info("ℹ Background scheduler disabled (set ENABLE_SCHEDULER=true to enable)")
         
@@ -136,10 +159,7 @@ def compute_rankings_from_db(
     week: Optional[int] = None,
     formula_params: Optional[FormulaParams] = None
 ) -> RankingSystem:
-    """
-    Compute rankings from database games.
-    """
-    # Update formula if custom params provided
+    """Compute rankings from database games."""
     if formula_params:
         RankingFormula.WIN_LOSS_MULTIPLIER = formula_params.win_loss_multiplier
         RankingFormula.ONE_SCORE_MULTIPLIER = formula_params.one_score_multiplier
@@ -149,7 +169,6 @@ def compute_rankings_from_db(
     else:
         RankingFormula.reset_to_defaults()
     
-    # Query games from database
     query = db.query(Game).filter(
         Game.season == year,
         Game.season_type == season_type,
@@ -164,14 +183,12 @@ def compute_rankings_from_db(
     if not games:
         raise ValueError(f"No games found for {year} {season_type}" + (f" week {week}" if week else ""))
     
-    # Build ranking system
     system = RankingSystem()
     
     for game in games:
         if game.home_points is None or game.away_points is None:
             continue
         
-        # Get team classifications
         home_team_obj = db.query(Team).filter(Team.school == game.home_team).first()
         away_team_obj = db.query(Team).filter(Team.school == game.away_team).first()
         
@@ -188,7 +205,6 @@ def compute_rankings_from_db(
             week=game.week
         )
     
-    # Calculate rankings
     system.calculate_rankings(iterations=20)
     
     logger.info(f"Computed rankings from {len(games)} games, {len(system.teams)} teams")
@@ -206,7 +222,6 @@ def save_rankings_to_db(
     """Save computed rankings to database"""
     ranked_teams = system.get_rankings(sort=True)
     
-    # Store formula params as JSON
     formula_json = None
     if formula_params:
         formula_json = {
@@ -220,7 +235,6 @@ def save_rankings_to_db(
     for rank, team in enumerate(ranked_teams, 1):
         wins, losses = team.get_record()
         
-        # Check if ranking already exists
         existing = db.query(CustomRanking).filter(
             CustomRanking.season == year,
             CustomRanking.season_type == season_type,
@@ -234,7 +248,7 @@ def save_rankings_to_db(
             existing.wins = wins
             existing.losses = losses
             existing.formula_params = formula_json
-            existing.computed_at = datetime.utcnow()
+            existing.computed_at = datetime.now(timezone.utc)  # FIXED
         else:
             db.add(CustomRanking(
                 season=year,
@@ -246,7 +260,7 @@ def save_rankings_to_db(
                 wins=wins,
                 losses=losses,
                 formula_params=formula_json,
-                computed_at=datetime.utcnow()
+                computed_at=datetime.now(timezone.utc)  # FIXED
             ))
     
     db.commit()
@@ -287,22 +301,36 @@ async def root():
         with open(html_path, 'r') as f:
             return f.read()
     else:
-        # Fallback to JSON if HTML not found
-        return JSONResponse({
-            "name": "College Football Rankings API",
-            "version": "2.0.0",
-            "status": "running",
-            "error": "Frontend HTML not found",
-            "database_configured": bool(DATABASE_URL),
-            "endpoints": {
-                "rankings": "/rankings",
-                "team": "/team/{team_name}",
-                "games": "/games",
-                "health": "/health",
-                "docs": "/docs"
-            },
-            "note": "Add cfb-rankings.html to serve the web interface"
-        })
+        return HTMLResponse("""
+            <!DOCTYPE html>
+            <html>
+            <head><title>CFB Rankings API</title></head>
+            <body style="font-family: Arial; padding: 40px; background: #667eea; color: white;">
+                <h1>🏈 CFB Rankings API</h1>
+                <p>Frontend HTML not found. Please add cfb-rankings.html file.</p>
+                <p><a href="/docs" style="color: white;">View API Documentation</a></p>
+                <p><a href="/health" style="color: white;">Health Check</a></p>
+            </body>
+            </html>
+        """)
+
+@app.get("/api-info")
+async def api_info():
+    """API information as JSON"""
+    return {
+        "name": "College Football Rankings API",
+        "version": "2.0.0",
+        "status": "running",
+        "database_configured": bool(DATABASE_URL),
+        "database_type": "PostgreSQL" if DATABASE_URL and "postgresql" in DATABASE_URL else "SQLite",
+        "endpoints": {
+            "rankings": "/rankings",
+            "team": "/team/{team_name}",
+            "games": "/games",
+            "health": "/health",
+            "docs": "/docs"
+        }
+    }
 
 @app.get("/health")
 async def health_check():
@@ -310,15 +338,15 @@ async def health_check():
     response = {
         "status": "healthy",
         "database": "not_configured",
-        "timestamp": datetime.utcnow().isoformat()
+        "timestamp": datetime.now(timezone.utc).isoformat()  # FIXED
     }
     
     try:
         with engine.connect() as conn:
-            conn.execute("SELECT 1")
+            conn.execute(text("SELECT 1"))  # FIXED: Use text()
+            conn.commit()
         response["database"] = "connected"
         
-        # Get some stats
         db = SessionLocal()
         try:
             game_count = db.query(Game).count()
@@ -341,7 +369,6 @@ async def health_check():
 async def db_status():
     """Detailed database status"""
     try:
-        # Hide sensitive info
         safe_url = "not_configured"
         if DATABASE_URL:
             safe_url = DATABASE_URL.split('@')[0] + "@***" if '@' in DATABASE_URL else "***"
@@ -350,14 +377,14 @@ async def db_status():
             "database_url_configured": bool(DATABASE_URL),
             "database_url": safe_url,
             "connection": "unknown",
-            "using_sqlite": DATABASE_URL.startswith("sqlite") if DATABASE_URL else False
+            "using_sqlite": DATABASE_URL.startswith("sqlite") if DATABASE_URL else True
         }
         
         try:
             with engine.connect() as conn:
-                result = conn.execute("SELECT version()")
+                result = conn.execute(text("SELECT version()"))  # FIXED
                 version_row = result.fetchone()
-                version = version_row[0] if version_row else "unknown"
+                version = version_row[0] if version_row else "SQLite"
                 status["connection"] = "success"
                 status["version"] = version
         except Exception as e:
@@ -371,43 +398,23 @@ async def db_status():
             "connection": "failed"
         }
 
-@app.get("/api-info")
-async def api_info():
-    """API information as JSON"""
-    return {
-        "name": "College Football Rankings API",
-        "version": "2.0.0",
-        "status": "running",
-        "database_configured": bool(DATABASE_URL),
-        "endpoints": {
-            "rankings": "/rankings",
-            "team": "/team/{team_name}",
-            "games": "/games",
-            "health": "/health",
-            "docs": "/docs"
-        }
-    }
-
 # ==================== RANKINGS ENDPOINTS ====================
 
 @app.get("/rankings", response_model=RankingsResponse)
 async def get_rankings(
     year: int = Query(2024, description="Season year"),
     season_type: str = Query("regular", description="Season type: regular or postseason"),
-    week: Optional[int] = Query(None, description="Specific week number (includes all games up to this week)"),
+    week: Optional[int] = Query(None, description="Specific week number"),
     top_n: Optional[int] = Query(None, description="Limit to top N teams"),
     save: bool = Query(False, description="Save computed rankings to database"),
-    # Formula parameters
-    win_loss_multiplier: float = Query(1.0, description="Win/loss multiplier"),
-    one_score_multiplier: float = Query(1.0, description="1-score game multiplier (≤8 pts)"),
-    two_score_multiplier: float = Query(1.3, description="2-score game multiplier (9-16 pts)"),
-    three_score_multiplier: float = Query(1.5, description="3+ score game multiplier (>16 pts)"),
-    strength_of_schedule_multiplier: float = Query(1.0, description="Strength of schedule multiplier"),
+    win_loss_multiplier: float = Query(1.0),
+    one_score_multiplier: float = Query(1.0),
+    two_score_multiplier: float = Query(1.3),
+    three_score_multiplier: float = Query(1.5),
+    strength_of_schedule_multiplier: float = Query(1.0),
     db: Session = Depends(get_db)
 ):
-    """
-    Get custom rankings computed from database games.
-    """
+    """Get custom rankings computed from database games."""
     try:
         formula_params = FormulaParams(
             win_loss_multiplier=win_loss_multiplier,
@@ -417,14 +424,11 @@ async def get_rankings(
             strength_of_schedule_multiplier=strength_of_schedule_multiplier
         )
         
-        # Compute rankings from database
         system = compute_rankings_from_db(db, year, season_type, week, formula_params)
         
-        # Optionally save to database
         if save:
             save_rankings_to_db(db, system, year, season_type, week, formula_params)
         
-        # Get ranked teams
         ranked_teams = system.get_rankings(sort=True)
         if top_n:
             ranked_teams = ranked_teams[:top_n]
@@ -440,7 +444,7 @@ async def get_rankings(
             year=year,
             season_type=season_type,
             week=week,
-            computed_at=datetime.utcnow().isoformat()
+            computed_at=datetime.now(timezone.utc).isoformat()  # FIXED
         )
         
     except ValueError as e:
@@ -454,14 +458,12 @@ async def get_rankings(
 @app.get("/team/{team_name}", response_model=TeamResponse)
 async def get_team(
     team_name: str,
-    year: int = Query(2024, description="Season year"),
-    season_type: str = Query("regular", description="Season type"),
-    week: Optional[int] = Query(None, description="Specific week"),
+    year: int = Query(2024),
+    season_type: str = Query("regular"),
+    week: Optional[int] = Query(None),
     db: Session = Depends(get_db)
 ):
-    """
-    Get detailed information for a specific team.
-    """
+    """Get detailed information for a specific team."""
     try:
         system = compute_rankings_from_db(db, year, season_type, week)
         
@@ -476,6 +478,9 @@ async def get_team(
     except Exception as e:
         logger.error(f"Error getting team: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+# ... (rest of the endpoints remain the same but with datetime.now(timezone.utc) replacements)
+
 
 @app.get("/saved-rankings")
 async def get_saved_rankings(
@@ -702,6 +707,5 @@ async def get_stats_summary(db: Session = Depends(get_db)):
 # ==================== RUN SERVER ====================
 
 if __name__ == "__main__":
-    import os
     port = int(os.environ.get("PORT", 8000))
     uvicorn.run(app, host="0.0.0.0", port=port)
