@@ -704,6 +704,100 @@ async def get_stats_summary(db: Session = Depends(get_db)):
         logger.error(f"Error getting stats summary: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/admin/init-db")
+async def initialize_database():
+    """
+    Initialize database tables.
+    Call this first before syncing data.
+    """
+    try:
+        logger.info("Initializing database tables...")
+        
+        from db_models_complete import init_db, test_connection
+        
+        # Test connection first
+        if not test_connection():
+            raise HTTPException(
+                status_code=500,
+                detail="Database connection failed. Check DATABASE_URL environment variable."
+            )
+        
+        # Create tables
+        init_db()
+        
+        # Verify tables were created
+        db = SessionLocal()
+        try:
+            # Try to query each main table
+            team_count = db.query(Team).count()
+            game_count = db.query(Game).count()
+            
+            return {
+                "status": "success",
+                "message": "Database tables initialized",
+                "tables": {
+                    "teams": team_count,
+                    "games": game_count
+                }
+            }
+        finally:
+            db.close()
+            
+    except Exception as e:
+        logger.error(f"Database initialization failed: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Initialization failed: {str(e)}"
+        )
+
+@app.get("/admin/check-api-key")
+async def check_api_key():
+    """Check if CFBD API key is configured"""
+    api_key = os.getenv("CFBD_API_KEY")
+    
+    if not api_key:
+        return {
+            "configured": False,
+            "message": "CFBD_API_KEY not set. Add it in Railway dashboard under Variables."
+        }
+    
+    # Test the API key
+    try:
+        import requests
+        response = requests.get(
+            "https://api.collegefootballdata.com/teams/fbs",
+            headers={'Authorization': f'Bearer {api_key}'},
+            timeout=10
+        )
+        
+        if response.status_code == 200:
+            teams = response.json()
+            return {
+                "configured": True,
+                "valid": True,
+                "message": f"API key is valid. Found {len(teams)} FBS teams."
+            }
+        elif response.status_code == 401:
+            return {
+                "configured": True,
+                "valid": False,
+                "message": "API key is invalid or expired."
+            }
+        else:
+            return {
+                "configured": True,
+                "valid": False,
+                "message": f"API returned status {response.status_code}"
+            }
+    except Exception as e:
+        return {
+            "configured": True,
+            "valid": False,
+            "error": str(e)
+        }
+
 # ==================== RUN SERVER ====================
 
 if __name__ == "__main__":

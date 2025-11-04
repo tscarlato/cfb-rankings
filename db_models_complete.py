@@ -974,13 +974,17 @@ def drop_all():
     Base.metadata.drop_all(bind=engine)
     logger.info("All tables dropped")
 
+# db_models_complete.py - Update test_connection function
+
 def test_connection():
     """Test database connection"""
     try:
+        from sqlalchemy import text  # Import here
         with engine.connect() as conn:
-            result = conn.execute("SELECT 1")
-            logger.info("Database connection test successful")
-            return True
+            conn.execute(text("SELECT 1"))  # Use text()
+            conn.commit()
+        logger.info("Database connection test successful")
+        return True
     except Exception as e:
         logger.error(f"Database connection test failed: {e}")
         return False
