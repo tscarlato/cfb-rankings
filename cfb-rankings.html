@@ -1,795 +1,507 @@
+<!-- cfb-rankings.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CFB Rankings - Custom College Football Ranking System</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <title>CFB Rankings - Custom College Football Rankings</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
-            font-family: 'Inter', sans-serif;
-        }
-        
-        .gradient-bg {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
         }
-        
-        .card-hover {
-            transition: transform 0.2s, box-shadow 0.2s;
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
         }
-        
-        .card-hover:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+            padding: 40px 20px;
         }
-        
-        .team-row {
-            transition: all 0.2s ease;
+
+        .header h1 {
+            font-size: 3em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
         }
-        
-        .team-row:hover {
-            background: linear-gradient(to right, #f8fafc, #f1f5f9);
-            transform: scale(1.01);
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
         }
-        
-        .rank-badge {
+
+        .controls {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .control-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .control-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .control-item label {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #333;
+            font-size: 0.9em;
+        }
+
+        .control-item select,
+        .control-item input {
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: border-color 0.3s;
+        }
+
+        .control-item select:focus,
+        .control-item input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .formula-params {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 2px solid #e0e0e0;
+        }
+
+        .formula-params h3 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .param-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+        }
+
+        .param-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .param-item label {
+            font-size: 0.85em;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .param-item input {
+            padding: 8px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        button {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            flex: 1;
+        }
+
+        .btn-primary {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            width: 48px;
-            height: 48px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 12px;
-            font-weight: 800;
-            font-size: 18px;
-            box-shadow: 0 4px 6px -1px rgba(102, 126, 234, 0.3);
         }
-        
-        .rank-badge.top-5 {
-            background: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);
-            box-shadow: 0 4px 6px -1px rgba(245, 158, 11, 0.3);
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
         }
-        
-        .rank-badge.top-10 {
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-            box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.3);
+
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
         }
-        
-        .rank-badge.top-25 {
-            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-            box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.3);
+
+        .btn-secondary:hover {
+            background: #e0e0e0;
         }
-        
-        .logo-container {
-            width: 48px;
-            height: 48px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: white;
+            font-size: 1.2em;
+        }
+
+        .rankings {
             background: white;
-            border-radius: 50%;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            border-radius: 15px;
             overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
         }
-        
-        .logo-container img {
+
+        .rankings-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .rankings-header h2 {
+            font-size: 1.5em;
+        }
+
+        .rankings-info {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead {
+            background: #f8f9fa;
+        }
+
+        th {
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            color: #333;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        th.rank { width: 60px; text-align: center; }
+        th.record { width: 100px; text-align: center; }
+        th.rating { width: 100px; text-align: right; }
+
+        tbody tr {
+            border-bottom: 1px solid #f0f0f0;
+            transition: background 0.2s;
+        }
+
+        tbody tr:hover {
+            background: #f8f9fa;
+        }
+
+        td {
+            padding: 15px;
+        }
+
+        td.rank {
+            text-align: center;
+            font-weight: 700;
+            color: #667eea;
+            font-size: 1.1em;
+        }
+
+        td.team {
+            font-weight: 600;
+            color: #333;
+        }
+
+        td.record {
+            text-align: center;
+            color: #666;
+        }
+
+        td.rating {
+            text-align: right;
+            font-weight: 600;
+            color: #764ba2;
+        }
+
+        .top-3 {
+            background: #fff9e6;
+        }
+
+        .error {
+            background: #fff0f0;
+            color: #d32f2f;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #d32f2f;
+        }
+
+        .info {
+            background: #e3f2fd;
+            color: #1976d2;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #1976d2;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2em;
+            }
+
+            .control-group {
+                grid-template-columns: 1fr;
+            }
+
+            .param-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .button-group {
+                flex-direction: column;
+            }
+
+            table {
+                font-size: 0.9em;
+            }
+
+            th, td {
+                padding: 10px 8px;
+            }
+        }
+
+        .spinner {
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 3px solid white;
             width: 40px;
             height: 40px;
-            object-fit: contain;
-        }
-        
-        .stat-card {
-            background: linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.7) 100%);
-            backdrop-filter: blur(10px);
-        }
-        
-        .formula-input {
-            transition: all 0.2s;
-        }
-        
-        .formula-input:focus {
-            transform: scale(1.02);
-        }
-        
-        .details-row {
-            animation: slideDown 0.3s ease-out;
-        }
-        
-        @keyframes slideDown {
-            from {
-                opacity: 0;
-                transform: translateY(-10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        
-        .loading-spinner {
             animation: spin 1s linear infinite;
+            margin: 20px auto;
         }
-        
+
         @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
     </style>
 </head>
-<body class="bg-gradient-to-br from-slate-100 via-blue-50 to-indigo-100 min-h-screen">
-    <div id="root" class="min-h-screen p-4 md:p-8">
-        <div class="max-w-7xl mx-auto">
-            <!-- Header -->
-            <div class="gradient-bg rounded-2xl shadow-2xl p-8 mb-6 text-white">
-                <div class="flex items-center justify-between mb-4 flex-wrap gap-4">
-                    <div class="flex items-center gap-4">
-                        <div class="bg-white/20 backdrop-blur-sm rounded-2xl p-4">
-                            <i class="fas fa-trophy text-yellow-300 text-5xl"></i>
-                        </div>
-                        <div>
-                            <h1 class="text-4xl md:text-5xl font-extrabold mb-2">
-                                CFB Rankings <span id="yearDisplay" class="text-yellow-300">2024</span>
-                            </h1>
-                            <p class="text-blue-100 text-lg flex items-center gap-3">
-                                <span class="bg-white/20 px-3 py-1 rounded-full text-sm font-semibold">FBS</span>
-                                <span>•</span>
-                                <span class="bg-white/20 px-3 py-1 rounded-full text-sm font-semibold">Regular Season</span>
-                            </p>
-                        </div>
-                    </div>
-                    <button onclick="fetchRankings()" class="bg-white text-indigo-600 px-6 py-3 rounded-xl hover:bg-blue-50 transition-all font-bold shadow-lg hover:shadow-xl flex items-center gap-2">
-                        <i class="fas fa-sync-alt"></i>
-                        Refresh
-                    </button>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏈 CFB Rankings</h1>
+            <p>Custom College Football Team Rankings</p>
+        </div>
+
+        <div class="controls">
+            <div class="control-group">
+                <div class="control-item">
+                    <label for="year">Season</label>
+                    <select id="year">
+                        <option value="2024" selected>2024</option>
+                        <option value="2023">2023</option>
+                        <option value="2022">2022</option>
+                        <option value="2021">2021</option>
+                        <option value="2020">2020</option>
+                    </select>
                 </div>
-                <p class="text-blue-100 text-lg">Custom ranking system based on wins, strength of schedule, and margin of victory</p>
+
+                <div class="control-item">
+                    <label for="seasonType">Season Type</label>
+                    <select id="seasonType">
+                        <option value="regular" selected>Regular Season</option>
+                        <option value="postseason">Postseason</option>
+                    </select>
+                </div>
+
+                <div class="control-item">
+                    <label for="week">Week (Optional)</label>
+                    <input type="number" id="week" min="1" max="15" placeholder="All weeks">
+                </div>
+
+                <div class="control-item">
+                    <label for="topN">Show Top N</label>
+                    <input type="number" id="topN" min="1" max="133" value="25" placeholder="25">
+                </div>
             </div>
 
-            <!-- Controls -->
-            <div class="bg-white rounded-2xl shadow-xl p-6 mb-6">
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-4">
-                    <div>
-                        <label class="block text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
-                            <i class="fas fa-calendar text-indigo-500"></i>
-                            Year
-                        </label>
-                        <select id="yearSelect" onchange="fetchRankings()" 
-                            class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-semibold bg-slate-50">
-                            <option value="2025">2025</option>
-                            <option value="2024" selected>2024</option>
-                            <option value="2023">2023</option>
-                            <option value="2022">2022</option>
-                            <option value="2021">2021</option>
-                            <option value="2020">2020</option>
-                        </select>
+            <div class="formula-params">
+                <h3>⚙️ Formula Parameters</h3>
+                <div class="param-grid">
+                    <div class="param-item">
+                        <label>Win/Loss (1.0)</label>
+                        <input type="number" id="winLoss" step="0.1" value="1.0">
                     </div>
-                    <div>
-                        <label class="block text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
-                            <i class="fas fa-clock text-indigo-500"></i>
-                            Week
-                        </label>
-                        <select id="weekSelect" onchange="fetchRankings()" 
-                            class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-semibold bg-slate-50">
-                            <option value="">All Weeks</option>
-                            <option value="1">Week 1</option>
-                            <option value="2">Week 2</option>
-                            <option value="3">Week 3</option>
-                            <option value="4">Week 4</option>
-                            <option value="5">Week 5</option>
-                            <option value="6">Week 6</option>
-                            <option value="7">Week 7</option>
-                            <option value="8">Week 8</option>
-                            <option value="9">Week 9</option>
-                            <option value="10">Week 10</option>
-                            <option value="11">Week 11</option>
-                            <option value="12">Week 12</option>
-                            <option value="13">Week 13</option>
-                            <option value="14">Week 14</option>
-                            <option value="15">Week 15</option>
-                        </select>
+                    <div class="param-item">
+                        <label>1-Score (1.0)</label>
+                        <input type="number" id="oneScore" step="0.1" value="1.0">
                     </div>
-                    <div>
-                        <label class="block text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
-                            <i class="fas fa-football-ball text-indigo-500"></i>
-                            Season Type
-                        </label>
-                        <select id="seasonSelect" onchange="fetchRankings()" 
-                            class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-semibold bg-slate-50">
-                            <option value="regular">Regular Season</option>
-                            <option value="both">Regular + Postseason</option>
-                        </select>
+                    <div class="param-item">
+                        <label>2-Score (1.3)</label>
+                        <input type="number" id="twoScore" step="0.1" value="1.3">
                     </div>
-                    <div class="lg:col-span-2">
-                        <label class="block text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
-                            <i class="fas fa-search text-indigo-500"></i>
-                            Search Teams
-                        </label>
-                        <input type="text" id="searchInput" placeholder="Find your team..." onkeyup="filterTeams()" 
-                            class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-slate-50">
+                    <div class="param-item">
+                        <label>3+ Score (1.5)</label>
+                        <input type="number" id="threeScore" step="0.1" value="1.5">
                     </div>
-                </div>
-
-                <!-- Formula Customization Toggle -->
-                <div class="border-t-2 border-slate-100 pt-4">
-                    <button onclick="toggleFormulaControls()" class="flex items-center gap-3 text-indigo-600 hover:text-indigo-700 font-bold text-lg group">
-                        <div class="bg-indigo-100 group-hover:bg-indigo-200 rounded-lg p-2 transition-colors">
-                            <i id="formulaToggleIcon" class="fas fa-chevron-down"></i>
-                        </div>
-                        <span>Customize Ranking Formula</span>
-                        <span class="text-sm font-normal text-slate-500">(Advanced)</span>
-                    </button>
-                    
-                    <div id="formulaControls" class="hidden mt-6 p-6 bg-gradient-to-br from-indigo-50 to-blue-50 rounded-xl border-2 border-indigo-100">
-                        <h3 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-                            <i class="fas fa-sliders-h text-indigo-500"></i>
-                            Formula Parameters
-                        </h3>
-                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                            <!-- Win/Loss Multiplier -->
-                            <div>
-                                <label class="block text-sm font-bold text-slate-700 mb-2">
-                                    Win/Loss Impact
-                                    <span class="text-xs text-slate-500 font-normal ml-1">(default: 1.0)</span>
-                                </label>
-                                <input type="number" id="winLossMultiplier" value="1.0" step="0.1" min="0" 
-                                    class="formula-input w-full px-4 py-2 border-2 border-indigo-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white font-semibold">
-                            </div>
-
-                            <!-- 1-Score Game Multiplier -->
-                            <div>
-                                <label class="block text-sm font-bold text-slate-700 mb-2">
-                                    1-Score Game (≤8 pts)
-                                    <span class="text-xs text-slate-500 font-normal ml-1">(default: 1.0)</span>
-                                </label>
-                                <input type="number" id="oneScoreMultiplier" value="1.0" step="0.1" min="0" 
-                                    class="formula-input w-full px-4 py-2 border-2 border-indigo-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white font-semibold">
-                            </div>
-
-                            <!-- 2-Score Game Multiplier -->
-                            <div>
-                                <label class="block text-sm font-bold text-slate-700 mb-2">
-                                    2-Score Game (9-16 pts)
-                                    <span class="text-xs text-slate-500 font-normal ml-1">(default: 1.3)</span>
-                                </label>
-                                <input type="number" id="twoScoreMultiplier" value="1.3" step="0.1" min="0" 
-                                    class="formula-input w-full px-4 py-2 border-2 border-indigo-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white font-semibold">
-                            </div>
-
-                            <!-- 3+ Score Game Multiplier -->
-                            <div>
-                                <label class="block text-sm font-bold text-slate-700 mb-2">
-                                    3+ Score Game (>16 pts)
-                                    <span class="text-xs text-slate-500 font-normal ml-1">(default: 1.5)</span>
-                                </label>
-                                <input type="number" id="threeScoreMultiplier" value="1.5" step="0.1" min="0" 
-                                    class="formula-input w-full px-4 py-2 border-2 border-indigo-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white font-semibold">
-                            </div>
-
-                            <!-- Strength of Schedule Multiplier -->
-                            <div>
-                                <label class="block text-sm font-bold text-slate-700 mb-2">
-                                    Strength of Schedule
-                                    <span class="text-xs text-slate-500 font-normal ml-1">(default: 1.0)</span>
-                                </label>
-                                <input type="number" id="strengthOfScheduleMultiplier" value="1.0" step="0.1" min="0" 
-                                    class="formula-input w-full px-4 py-2 border-2 border-indigo-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white font-semibold">
-                            </div>
-                        </div>
-
-                        <div class="flex flex-wrap gap-3">
-                            <button onclick="applyFormula()" class="flex items-center gap-2 bg-indigo-600 text-white px-6 py-3 rounded-xl hover:bg-indigo-700 transition-all font-bold shadow-lg hover:shadow-xl">
-                                <i class="fas fa-calculator"></i>
-                                Apply Formula
-                            </button>
-                            <button onclick="resetFormula()" class="flex items-center gap-2 bg-slate-600 text-white px-6 py-3 rounded-xl hover:bg-slate-700 transition-all font-bold shadow-lg hover:shadow-xl">
-                                <i class="fas fa-undo"></i>
-                                Reset to Defaults
-                            </button>
-                        </div>
-
-                        <div class="mt-4 p-4 bg-white rounded-lg border-2 border-indigo-100">
-                            <p class="font-bold text-slate-800 mb-2"><i class="fas fa-formula text-indigo-500 mr-2"></i>Current Formula:</p>
-                            <p class="text-sm text-slate-600 font-mono">(Win/Loss × Score Margin Multiplier) + ((Opponent Rank ÷ 100) × SoS Multiplier)</p>
-                            <p class="text-sm text-slate-600 mt-2"><strong>Score Categories:</strong> 1-Score (≤8pts) = <span id="displayOneScore">1.0</span>x, 2-Score (9-16pts) = <span id="displayTwoScore">1.3</span>x, 3+ Score (>16pts) = <span id="displayThreeScore">1.5</span>x</p>
-                        </div>
+                    <div class="param-item">
+                        <label>SoS (1.0)</label>
+                        <input type="number" id="sos" step="0.1" value="1.0">
                     </div>
                 </div>
             </div>
 
-            <!-- Loading/Error -->
-            <div id="loadingBox" class="bg-white rounded-2xl shadow-xl p-12 text-center">
-                <div class="loading-spinner inline-block text-indigo-600 text-6xl mb-6">
-                    <i class="fas fa-spinner"></i>
-                </div>
-                <p class="text-2xl text-slate-700 font-bold mb-2">Loading rankings...</p>
-                <p class="text-slate-500">Calculating team performance metrics</p>
-            </div>
-
-            <div id="errorBox" style="display:none" class="bg-white rounded-2xl shadow-xl p-12 text-center">
-                <i class="fas fa-exclamation-circle text-red-500 text-6xl mb-6"></i>
-                <h2 class="text-3xl font-bold text-slate-800 mb-3">Error Loading Rankings</h2>
-                <p class="text-slate-600 mb-6 text-lg" id="errorText"></p>
-                <button onclick="fetchRankings()" class="bg-indigo-600 text-white px-8 py-4 rounded-xl hover:bg-indigo-700 font-bold text-lg shadow-lg">Try Again</button>
-            </div>
-
-            <!-- Rankings Table -->
-            <div id="tableBox" style="display:none">
-                <div class="bg-white rounded-2xl shadow-xl overflow-hidden">
-                    <div class="overflow-x-auto">
-                        <table class="w-full">
-                            <thead class="bg-gradient-to-r from-slate-800 to-slate-700 text-white">
-                                <tr>
-                                    <th class="px-6 py-4 text-left font-bold text-lg">Rank</th>
-                                    <th class="px-6 py-4 text-left font-bold text-lg">Team</th>
-                                    <th class="px-6 py-4 text-center font-bold text-lg">Record</th>
-                                    <th class="px-6 py-4 text-right font-bold text-lg">Rating</th>
-                                    <th class="px-6 py-4 text-center font-bold text-lg">Details</th>
-                                </tr>
-                            </thead>
-                            <tbody id="tableBody"></tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <!-- Footer Stats -->
-                <div class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div class="stat-card rounded-xl p-6 shadow-lg">
-                        <div class="flex items-center gap-3">
-                            <div class="bg-indigo-100 rounded-lg p-3">
-                                <i class="fas fa-users text-indigo-600 text-2xl"></i>
-                            </div>
-                            <div>
-                                <p class="text-slate-500 text-sm font-semibold">Total Teams</p>
-                                <p class="text-2xl font-bold text-slate-800"><span id="teamCount">0</span></p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="stat-card rounded-xl p-6 shadow-lg">
-                        <div class="flex items-center gap-3">
-                            <div class="bg-green-100 rounded-lg p-3">
-                                <i class="fas fa-calculator text-green-600 text-2xl"></i>
-                            </div>
-                            <div>
-                                <p class="text-slate-500 text-sm font-semibold">Formula</p>
-                                <p class="text-lg font-bold text-slate-800">Custom Algorithm</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="stat-card rounded-xl p-6 shadow-lg">
-                        <div class="flex items-center gap-3">
-                            <div class="bg-yellow-100 rounded-lg p-3">
-                                <i class="fas fa-star text-yellow-600 text-2xl"></i>
-                            </div>
-                            <div>
-                                <p class="text-slate-500 text-sm font-semibold">Data Source</p>
-                                <p class="text-lg font-bold text-slate-800">CFB Data API</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+            <div class="button-group">
+                <button class="btn-primary" onclick="loadRankings()">
+                    Calculate Rankings
+                </button>
+                <button class="btn-secondary" onclick="resetParams()">
+                    Reset to Defaults
+                </button>
             </div>
         </div>
+
+        <div id="results"></div>
     </div>
 
     <script>
-        let allTeams = [];
-        const API_URL = '';
+        const API_BASE = window.location.origin;
 
-        // Team name to logo URL mapping (ESPN logos)
-        function getTeamLogo(teamName) {
-            // ESPN uses a consistent URL pattern for team logos
-            // Format: https://a.espncdn.com/i/teamlogos/ncaa/500/[team-id].png
+        async function loadRankings() {
+            const year = document.getElementById('year').value;
+            const seasonType = document.getElementById('seasonType').value;
+            const week = document.getElementById('week').value;
+            const topN = document.getElementById('topN').value;
             
-            const teamLogos = {
-                // Power 4 - SEC
-                'Alabama': '333',
-                'Georgia': '61',
-                'LSU': '99',
-                'Florida': '57',
-                'Tennessee': '2633',
-                'Texas': '251',
-                'Texas A&M': '245',
-                'Auburn': '2',
-                'Ole Miss': '145',
-                'Mississippi State': '344',
-                'Arkansas': '8',
-                'Kentucky': '96',
-                'South Carolina': '2579',
-                'Missouri': '142',
-                'Vanderbilt': '238',
-                'Oklahoma': '201',
-                
-                // Power 4 - Big Ten
-                'Ohio State': '194',
-                'Michigan': '130',
-                'Penn State': '213',
-                'USC': '30',
-                'Oregon': '2483',
-                'Washington': '264',
-                'UCLA': '26',
-                'Michigan State': '127',
-                'Iowa': '2294',
-                'Wisconsin': '275',
-                'Nebraska': '158',
-                'Minnesota': '135',
-                'Indiana': '84',
-                'Purdue': '2509',
-                'Maryland': '120',
-                'Rutgers': '164',
-                'Northwestern': '77',
-                'Illinois': '356',
-                
-                // Power 4 - ACC
-                'Clemson': '228',
-                'Florida State': '52',
-                'Miami': '2390',
-                'North Carolina': '153',
-                'NC State': '152',
-                'Louisville': '97',
-                'Duke': '150',
-                'Virginia Tech': '259',
-                'Virginia': '258',
-                'Georgia Tech': '59',
-                'Boston College': '103',
-                'Syracuse': '183',
-                'Wake Forest': '154',
-                'Pittsburgh': '221',
-                'Stanford': '24',
-                'California': '25',
-                'SMU': '2567',
-                
-                // Power 4 - Big 12
-                'Kansas State': '2306',
-                'TCU': '2628',
-                'Baylor': '239',
-                'Texas Tech': '2641',
-                'Oklahoma State': '197',
-                'West Virginia': '277',
-                'Iowa State': '66',
-                'Kansas': '2305',
-                'BYU': '252',
-                'Utah': '254',
-                'Colorado': '38',
-                'Arizona': '12',
-                'Arizona State': '9',
-                'Cincinnati': '2132',
-                'Houston': '248',
-                'UCF': '2116',
-                
-                // Independent
-                'Notre Dame': '87',
-                'UConn': '41',
-                'UMass': '113',
-                
-                // Group of 5 - American
-                'Memphis': '235',
-                'Tulane': '2655',
-                'Navy': '2426',
-                'South Florida': '58',
-                'Temple': '218',
-                'East Carolina': '151',
-                'Tulsa': '202',
-                'UTSA': '2636',
-                'North Texas': '249',
-                'Charlotte': '2429',
-                'Florida Atlantic': '2226',
-                'Rice': '242',
-                'UAB': '5',
-                
-                // Group of 5 - Mountain West
-                'Boise State': '68',
-                'San Diego State': '21',
-                'Fresno State': '278',
-                'Air Force': '2005',
-                'Wyoming': '2005',
-                'Colorado State': '36',
-                'Nevada': '2440',
-                'UNLV': '2439',
-                'New Mexico': '167',
-                'San José State': '23',
-                'Utah State': '328',
-                'Hawaiʻi': '62',
-                
-                // Group of 5 - Sun Belt
-                'App State': '2026',
-                'Appalachian State': '2026',
-                'Coastal Carolina': '324',
-                'James Madison': '256',
-                'Marshall': '276',
-                'Georgia Southern': '290',
-                'Georgia State': '2247',
-                'Troy': '2653',
-                'South Alabama': '6',
-                'Louisiana': '309',
-                'Southern Mississippi': '2572',
-                'Arkansas State': '2032',
-                'Louisiana Monroe': '2433',
-                'Texas State': '326',
-                'Old Dominion': '295',
-                
-                // Group of 5 - MAC
-                'Toledo': '2649',
-                'Miami (OH)': '193',
-                'Ohio': '195',
-                'Bowling Green': '189',
-                'Northern Illinois': '2459',
-                'Ball State': '2050',
-                'Eastern Michigan': '2199',
-                'Western Michigan': '2711',
-                'Central Michigan': '2117',
-                'Buffalo': '2084',
-                'Kent State': '2309',
-                'Akron': '4',
-                
-                // Group of 5 - CUSA
-                'Liberty': '2335',
-                'Western Kentucky': '98',
-                'Jacksonville State': '55',
-                'Louisiana Tech': '2348',
-                'Middle Tennessee': '2393',
-                'UTEP': '2638',
-                'New Mexico State': '166',
-                'Sam Houston': '2534',
-                'Sam Houston State': '2534',
-                'FIU': '2229',
-                'Kennesaw State': '2817',
-                
-                // Army
-                'Army': '349',
-                'Army West Point': '349',
-                
-                // Additional team name variations
-                'Hawaii': '62',
-                'Hawai\'i': '62',
-                'Miami (FL)': '2390',
-                'Miami FL': '2390',
-                'UL Monroe': '2433',
-                'ULM': '2433',
-                'Southern Miss': '2572',
-                'Southern Mississippi': '2572',
-                'UL Lafayette': '309',
-                'Louisiana Lafayette': '309',
-                'SJSU': '23',
-                'San Jose State': '23',
-                'UTSA': '2636',
-                'UT San Antonio': '2636'
-            };
+            const winLoss = document.getElementById('winLoss').value;
+            const oneScore = document.getElementById('oneScore').value;
+            const twoScore = document.getElementById('twoScore').value;
+            const threeScore = document.getElementById('threeScore').value;
+            const sos = document.getElementById('sos').value;
+
+            // Build URL
+            let url = `${API_BASE}/rankings?year=${year}&season_type=${seasonType}`;
+            if (week) url += `&week=${week}`;
+            if (topN) url += `&top_n=${topN}`;
             
-            const teamId = teamLogos[teamName];
-            if (teamId) {
-                return `https://a.espncdn.com/i/teamlogos/ncaa/500/${teamId}.png`;
-            }
-            
-            // Fallback to a generic football icon if team not found
-            return null;
-        }
+            url += `&win_loss_multiplier=${winLoss}`;
+            url += `&one_score_multiplier=${oneScore}`;
+            url += `&two_score_multiplier=${twoScore}`;
+            url += `&three_score_multiplier=${threeScore}`;
+            url += `&strength_of_schedule_multiplier=${sos}`;
 
-        function toggleFormulaControls() {
-            const controls = document.getElementById('formulaControls');
-            const icon = document.getElementById('formulaToggleIcon');
-            if (controls.classList.contains('hidden')) {
-                controls.classList.remove('hidden');
-                icon.classList.remove('fa-chevron-down');
-                icon.classList.add('fa-chevron-up');
-            } else {
-                controls.classList.add('hidden');
-                icon.classList.remove('fa-chevron-up');
-                icon.classList.add('fa-chevron-down');
-            }
-        }
-
-        function resetFormula() {
-            document.getElementById('winLossMultiplier').value = '1.0';
-            document.getElementById('oneScoreMultiplier').value = '1.0';
-            document.getElementById('twoScoreMultiplier').value = '1.3';
-            document.getElementById('threeScoreMultiplier').value = '1.5';
-            document.getElementById('strengthOfScheduleMultiplier').value = '1.0';
-            updateFormulaDisplay();
-        }
-
-        function applyFormula() {
-            updateFormulaDisplay();
-            fetchRankings();
-        }
-
-        function updateFormulaDisplay() {
-            document.getElementById('displayOneScore').textContent = document.getElementById('oneScoreMultiplier').value;
-            document.getElementById('displayTwoScore').textContent = document.getElementById('twoScoreMultiplier').value;
-            document.getElementById('displayThreeScore').textContent = document.getElementById('threeScoreMultiplier').value;
-        }
-
-        function getFormulaParams() {
-            return {
-                win_loss_multiplier: parseFloat(document.getElementById('winLossMultiplier').value),
-                one_score_multiplier: parseFloat(document.getElementById('oneScoreMultiplier').value),
-                two_score_multiplier: parseFloat(document.getElementById('twoScoreMultiplier').value),
-                three_score_multiplier: parseFloat(document.getElementById('threeScoreMultiplier').value),
-                strength_of_schedule_multiplier: parseFloat(document.getElementById('strengthOfScheduleMultiplier').value)
-            };
-        }
-
-        async function fetchRankings() {
-            document.getElementById('loadingBox').style.display = 'block';
-            document.getElementById('errorBox').style.display = 'none';
-            document.getElementById('tableBox').style.display = 'none';
-
-            const year = document.getElementById('yearSelect').value;
-            const seasonType = document.getElementById('seasonSelect').value;
-            const week = document.getElementById('weekSelect').value;
-            document.getElementById('yearDisplay').textContent = year;
+            // Show loading
+            document.getElementById('results').innerHTML = `
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>Calculating rankings...</p>
+                </div>
+            `;
 
             try {
-                const params = getFormulaParams();
-                let url = `${API_URL}/rankings?year=${year}&season_type=${seasonType}`;
-                if (week) {
-                    url += `&week=${week}`;
-                }
-                
-                // Add formula parameters
-                url += `&win_loss_multiplier=${params.win_loss_multiplier}`;
-                url += `&one_score_multiplier=${params.one_score_multiplier}`;
-                url += `&two_score_multiplier=${params.two_score_multiplier}`;
-                url += `&three_score_multiplier=${params.three_score_multiplier}`;
-                url += `&strength_of_schedule_multiplier=${params.strength_of_schedule_multiplier}`;
-                
                 const response = await fetch(url);
-                if (!response.ok) throw new Error(`API returned ${response.status}`);
-                
                 const data = await response.json();
-                allTeams = data.teams;
-                
-                document.getElementById('loadingBox').style.display = 'none';
-                document.getElementById('tableBox').style.display = 'block';
-                filterTeams();
-                document.getElementById('teamCount').textContent = allTeams.length;
+
+                if (!response.ok) {
+                    throw new Error(data.detail || 'Failed to load rankings');
+                }
+
+                displayRankings(data);
             } catch (error) {
-                document.getElementById('loadingBox').style.display = 'none';
-                document.getElementById('errorBox').style.display = 'block';
-                document.getElementById('errorText').textContent = error.message;
+                document.getElementById('results').innerHTML = `
+                    <div class="error">
+                        <strong>Error:</strong> ${error.message}
+                        <br><br>
+                        <small>Make sure the database has been initialized and contains game data for the selected season.</small>
+                    </div>
+                `;
             }
         }
 
-        function filterTeams() {
-            const searchText = document.getElementById('searchInput').value.toLowerCase();
+        function displayRankings(data) {
+            const weekText = data.week ? ` - Week ${data.week}` : ' - Full Season';
             
-            let filtered = allTeams.filter(t => t.name.toLowerCase().includes(searchText));
-            
-            // Always sort by ranking for display
-            filtered.sort((a, b) => b.ranking - a.ranking);
-
-            displayTeams(filtered);
-        }
-
-        function displayTeams(teams) {
-            const tbody = document.getElementById('tableBody');
-            tbody.innerHTML = '';
-
-            teams.forEach((team, index) => {
-                const rankColor = getRankColor(team.ranking);
-                const logoUrl = getTeamLogo(team.name);
-                const rank = index + 1;
-                
-                let rankBadgeClass = 'rank-badge';
-                if (rank <= 5) rankBadgeClass += ' top-5';
-                else if (rank <= 10) rankBadgeClass += ' top-10';
-                else if (rank <= 25) rankBadgeClass += ' top-25';
-                
-                const row = document.createElement('tr');
-                row.className = 'border-b border-slate-100 team-row cursor-pointer';
-                row.innerHTML = `
-                    <td class="px-6 py-4">
-                        <div class="${rankBadgeClass}">${rank}</div>
-                    </td>
-                    <td class="px-6 py-4">
-                        <div class="flex items-center gap-4">
-                            ${logoUrl ? `
-                                <div class="logo-container">
-                                    <img src="${logoUrl}" alt="${team.name}" onerror="this.parentElement.innerHTML='<i class=\\'fas fa-football-ball text-slate-400 text-2xl\\'></i>'">
-                                </div>
-                            ` : `
-                                <div class="logo-container">
-                                    <i class="fas fa-football-ball text-slate-400 text-2xl"></i>
-                                </div>
-                            `}
-                            <span class="font-bold text-lg text-slate-800">${team.name}</span>
-                        </div>
-                    </td>
-                    <td class="px-6 py-4 text-center">
-                        <span class="inline-block bg-slate-100 px-4 py-2 rounded-lg font-bold text-slate-700">${team.wins}-${team.losses}</span>
-                    </td>
-                    <td class="px-6 py-4 text-right">
-                        <span class="font-mono text-2xl font-bold ${rankColor}">${team.ranking.toFixed(2)}</span>
-                    </td>
-                    <td class="px-6 py-4 text-center">
-                        <div class="bg-indigo-100 hover:bg-indigo-200 rounded-lg p-2 inline-block transition-colors">
-                            <i class="fas fa-chevron-down text-indigo-600"></i>
-                        </div>
-                    </td>
-                `;
-                row.onclick = () => toggleDetails(team, row);
-                tbody.appendChild(row);
-            });
-        }
-
-        function toggleDetails(team, row) {
-            const existing = row.nextElementSibling;
-            if (existing && existing.classList.contains('details-row')) {
-                existing.remove();
-                return;
-            }
-            
-            const detailsRow = document.createElement('tr');
-            detailsRow.className = 'details-row bg-gradient-to-r from-slate-50 to-blue-50';
-            
-            let gamesHtml = team.games.map(g => {
-                const resultClass = g.won ? 'bg-gradient-to-r from-green-500 to-green-600 text-white' : 'bg-gradient-to-r from-red-500 to-red-600 text-white';
-                const resultText = g.won ? 'W' : 'L';
-                const marginClass = g.margin > 0 ? 'text-green-600' : 'text-red-600';
-                const rankColor = getRankColor(g.opponent_rank);
-                const opponentLogo = getTeamLogo(g.opponent);
-                
-                return `
-                    <div class="flex items-center justify-between p-4 bg-white rounded-xl border-2 border-slate-100 hover:border-indigo-200 transition-all shadow-sm hover:shadow-md">
-                        <div class="flex items-center gap-4 flex-1">
-                            <span class="font-bold px-3 py-2 rounded-lg ${resultClass} shadow-md">${resultText}</span>
-                            ${opponentLogo ? `
-                                <div class="w-10 h-10 flex items-center justify-center">
-                                    <img src="${opponentLogo}" alt="${g.opponent}" class="w-8 h-8 object-contain" onerror="this.style.display='none'">
-                                </div>
-                            ` : ''}
-                            <div>
-                                <div class="font-bold text-slate-700">${g.opponent}</div>
-                                <div class="text-slate-500 font-mono text-xs">${g.opponent_record}</div>
-                            </div>
-                        </div>
-                        <div class="flex items-center gap-6">
-                            <div class="text-center">
-                                <div class="text-xs text-slate-500 font-semibold mb-1">OPP RANK</div>
-                                <div class="font-mono font-bold ${rankColor} text-lg">${g.opponent_rank.toFixed(2)}</div>
-                            </div>
-                            <div class="text-center">
-                                <div class="text-xs text-slate-500 font-semibold mb-1">MARGIN</div>
-                                <div class="font-mono font-bold ${marginClass} text-lg">${g.margin > 0 ? '+' : ''}${g.margin}</div>
-                            </div>
-                            <div class="text-center">
-                                <div class="text-xs text-slate-500 font-semibold mb-1">VALUE</div>
-                                <div class="font-mono font-bold text-indigo-600 text-lg">${g.value.toFixed(2)}</div>
-                            </div>
+            let html = `
+                <div class="rankings">
+                    <div class="rankings-header">
+                        <h2>${data.year} ${data.season_type.charAt(0).toUpperCase() + data.season_type.slice(1)}${weekText}</h2>
+                        <div class="rankings-info">
+                            ${data.teams.length} of ${data.total_teams} teams
                         </div>
                     </div>
-                `;
-            }).join('');
-            
-            detailsRow.innerHTML = `
-                <td colspan="5" class="px-6 py-6">
-                    <div class="bg-white rounded-xl p-6 border-2 border-indigo-100">
-                        <h3 class="font-bold text-2xl text-slate-800 mb-4 flex items-center gap-3">
-                            <i class="fas fa-list text-indigo-500"></i>
-                            ${team.name} Game Results
-                        </h3>
-                        <div class="space-y-2">${gamesHtml}</div>
-                    </div>
-                </td>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th class="rank">Rank</th>
+                                <th class="team">Team</th>
+                                <th class="record">Record</th>
+                                <th class="rating">Rating</th>
+                            </tr>
+                        </thead>
+                        <tbody>
             `;
-            
-            row.after(detailsRow);
+
+            data.teams.forEach((team, index) => {
+                const rowClass = index < 3 ? 'top-3' : '';
+                html += `
+                    <tr class="${rowClass}">
+                        <td class="rank">${index + 1}</td>
+                        <td class="team">${team.name}</td>
+                        <td class="record">${team.wins}-${team.losses}</td>
+                        <td class="rating">${team.ranking.toFixed(2)}</td>
+                    </tr>
+                `;
+            });
+
+            html += `
+                        </tbody>
+                    </table>
+                </div>
+            `;
+
+            document.getElementById('results').innerHTML = html;
         }
 
-        function getRankColor(rank) {
-            if (rank > 15) return 'text-green-600';
-            if (rank > 10) return 'text-green-700';
-            if (rank > 5) return 'text-blue-600';
-            if (rank > 0) return 'text-slate-700';
-            if (rank > -5) return 'text-orange-600';
-            return 'text-red-600';
+        function resetParams() {
+            document.getElementById('winLoss').value = '1.0';
+            document.getElementById('oneScore').value = '1.0';
+            document.getElementById('twoScore').value = '1.3';
+            document.getElementById('threeScore').value = '1.5';
+            document.getElementById('sos').value = '1.0';
         }
 
-        // Load on page load
-        fetchRankings();
+        // Load rankings on page load
+        window.addEventListener('load', () => {
+            // Show info message if no data yet
+            document.getElementById('results').innerHTML = `
+                <div class="info">
+                    <strong>Welcome!</strong> Click "Calculate Rankings" to view the latest college football rankings.
+                    <br><br>
+                    <small>Need data? Visit <a href="${API_BASE}/docs" style="color: #1976d2; font-weight: bold;">${API_BASE}/docs</a> to sync data via the /admin/sync endpoint.</small>
+                </div>
+            `;
+        });
     </script>
 </body>
 </html>

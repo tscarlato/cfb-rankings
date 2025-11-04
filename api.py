@@ -2,7 +2,7 @@
 
 from fastapi import FastAPI, HTTPException, Query, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONRespons, HTMLResponse
 from pydantic import BaseModel
 from typing import List, Optional
 from sqlalchemy.orm import Session
@@ -11,6 +11,9 @@ from datetime import datetime
 import uvicorn
 import logging
 import os
+
+from pathlib import Path
+
 
 from db_models_complete import (
     get_db, Game, Team, CustomRanking, SyncLog, init_db, 
@@ -275,22 +278,31 @@ def format_team_response(team, system: RankingSystem) -> TeamResponse:
 
 # ==================== ROOT & HEALTH ENDPOINTS ====================
 
-@app.get("/")
+@app.get("/", response_class=HTMLResponse)
 async def root():
-    """Basic API info"""
-    return {
-        "name": "College Football Rankings API",
-        "version": "2.0.0",
-        "status": "running",
-        "database_configured": bool(DATABASE_URL),
-        "endpoints": {
-            "rankings": "/rankings",
-            "team": "/team/{team_name}",
-            "games": "/games",
-            "health": "/health",
-            "docs": "/docs"
-        }
-    }
+    """Serve the frontend HTML"""
+    html_path = Path(__file__).parent / "cfb-rankings.html"
+    
+    if html_path.exists():
+        with open(html_path, 'r') as f:
+            return f.read()
+    else:
+        # Fallback to JSON if HTML not found
+        return JSONResponse({
+            "name": "College Football Rankings API",
+            "version": "2.0.0",
+            "status": "running",
+            "error": "Frontend HTML not found",
+            "database_configured": bool(DATABASE_URL),
+            "endpoints": {
+                "rankings": "/rankings",
+                "team": "/team/{team_name}",
+                "games": "/games",
+                "health": "/health",
+                "docs": "/docs"
+            },
+            "note": "Add cfb-rankings.html to serve the web interface"
+        })
 
 @app.get("/health")
 async def health_check():
@@ -358,6 +370,23 @@ async def db_status():
             "error": str(e),
             "connection": "failed"
         }
+
+@app.get("/api-info")
+async def api_info():
+    """API information as JSON"""
+    return {
+        "name": "College Football Rankings API",
+        "version": "2.0.0",
+        "status": "running",
+        "database_configured": bool(DATABASE_URL),
+        "endpoints": {
+            "rankings": "/rankings",
+            "team": "/team/{team_name}",
+            "games": "/games",
+            "health": "/health",
+            "docs": "/docs"
+        }
+    }
 
 # ==================== RANKINGS ENDPOINTS ====================
 
