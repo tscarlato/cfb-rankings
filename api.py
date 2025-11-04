@@ -798,6 +798,42 @@ async def check_api_key():
             "error": str(e)
         }
 
+
+@app.get("/admin/env-check")
+async def check_environment():
+    """Check environment variables (for debugging)"""
+    import os
+    
+    # Don't expose full values, just check if they exist
+    env_vars = {
+        "CFBD_API_KEY": "SET" if os.getenv("CFBD_API_KEY") else "NOT SET",
+        "DATABASE_URL": "SET" if os.getenv("DATABASE_URL") else "NOT SET",
+        "PORT": os.getenv("PORT", "not set"),
+        "ENABLE_SCHEDULER": os.getenv("ENABLE_SCHEDULER", "not set"),
+    }
+    
+    # Show first/last few chars of sensitive vars if set
+    if os.getenv("CFBD_API_KEY"):
+        key = os.getenv("CFBD_API_KEY")
+        env_vars["CFBD_API_KEY_preview"] = f"{key[:8]}...{key[-4:]}"
+    
+    if os.getenv("DATABASE_URL"):
+        db_url = os.getenv("DATABASE_URL")
+        # Show just the type and host
+        if "postgresql" in db_url:
+            env_vars["DATABASE_TYPE"] = "PostgreSQL"
+            # Extract host
+            try:
+                host = db_url.split("@")[1].split("/")[0] if "@" in db_url else "unknown"
+                env_vars["DATABASE_HOST"] = host
+            except:
+                pass
+        elif "sqlite" in db_url:
+            env_vars["DATABASE_TYPE"] = "SQLite"
+    
+    return env_vars
+
+    
 # ==================== RUN SERVER ====================
 
 if __name__ == "__main__":
