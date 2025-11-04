@@ -134,89 +134,89 @@ class CFBDataSyncService:
     
     def sync_games(self, db: Session, season: int, season_type: str = 'regular',
                week: Optional[int] = None) -> Dict:
-    """Sync games"""
-    log_entry = self._log_sync(db, 'games', season, season_type, week)
-    
-    try:
-        params = {'year': season, 'seasonType': season_type}
-        if week:
-            params['week'] = week
+        """Sync games"""
+        log_entry = self._log_sync(db, 'games', season, season_type, week)
         
-        games_data = self._api_request('/games', params)
-        added = updated = 0
-        skipped = 0
-        
-        for game_data in games_data:
-            game_id = game_data.get('id')
-            if not game_id:
-                skipped += 1
-                continue
+        try:
+            params = {'year': season, 'seasonType': season_type}
+            if week:
+                params['week'] = week
             
-            # FIX: Use camelCase field names from API
-            home_team = game_data.get('home_team') or game_data.get('homeTeam')
-            away_team = game_data.get('away_team') or game_data.get('awayTeam')
+            games_data = self._api_request('/games', params)
+            added = updated = 0
+            skipped = 0
             
-            if not home_team or not away_team:
-                logger.debug(f"Skipping game {game_id} - missing team names")
-                skipped += 1
-                continue
+            for game_data in games_data:
+                game_id = game_data.get('id')
+                if not game_id:
+                    skipped += 1
+                    continue
+                
+                # FIX: Use camelCase field names from API
+                home_team = game_data.get('home_team') or game_data.get('homeTeam')
+                away_team = game_data.get('away_team') or game_data.get('awayTeam')
+                
+                if not home_team or not away_team:
+                    logger.debug(f"Skipping game {game_id} - missing team names")
+                    skipped += 1
+                    continue
+                
+                existing = db.query(Game).filter(Game.id == game_id).first()
+                
+                # Map all fields - use camelCase from API
+                game_dict = {
+                    'id': game_id,
+                    'season': game_data.get('season'),
+                    'week': game_data.get('week'),
+                    'season_type': game_data.get('season_type') or game_data.get('seasonType'),
+                    'start_date': game_data.get('start_date') or game_data.get('startDate'),
+                    'start_time_tbd': game_data.get('start_time_tbd') or game_data.get('startTimeTBD'),
+                    'completed': game_data.get('completed', False),
+                    'neutral_site': game_data.get('neutral_site') or game_data.get('neutralSite'),
+                    'conference_game': game_data.get('conference_game') or game_data.get('conferenceGame'),
+                    'attendance': game_data.get('attendance'),
+                    'venue_id': game_data.get('venue_id') or game_data.get('venueId'),
+                    'venue': game_data.get('venue'),
+                    'home_id': game_data.get('home_id') or game_data.get('homeId'),
+                    'home_team': home_team,
+                    'home_conference': game_data.get('home_conference') or game_data.get('homeConference'),
+                    'home_division': game_data.get('home_division') or game_data.get('homeDivision'),
+                    'home_points': game_data.get('home_points') or game_data.get('homePoints'),
+                    'home_line_scores': game_data.get('home_line_scores') or game_data.get('homeLineScores', []),
+                    'home_post_win_prob': game_data.get('home_post_win_prob') or game_data.get('homePostWinProbability'),
+                    'home_pregame_elo': game_data.get('home_pregame_elo') or game_data.get('homePregameElo'),
+                    'home_postgame_elo': game_data.get('home_postgame_elo') or game_data.get('homePostgameElo'),
+                    'away_id': game_data.get('away_id') or game_data.get('awayId'),
+                    'away_team': away_team,
+                    'away_conference': game_data.get('away_conference') or game_data.get('awayConference'),
+                    'away_division': game_data.get('away_division') or game_data.get('awayDivision'),
+                    'away_points': game_data.get('away_points') or game_data.get('awayPoints'),
+                    'away_line_scores': game_data.get('away_line_scores') or game_data.get('awayLineScores', []),
+                    'away_post_win_prob': game_data.get('away_post_win_prob') or game_data.get('awayPostWinProbability'),
+                    'away_pregame_elo': game_data.get('away_pregame_elo') or game_data.get('awayPregameElo'),
+                    'away_postgame_elo': game_data.get('away_postgame_elo') or game_data.get('awayPostgameElo'),
+                    'excitement_index': game_data.get('excitement_index') or game_data.get('excitementIndex'),
+                    'highlights': game_data.get('highlights', ''),
+                    'notes': game_data.get('notes'),
+                }
+                
+                if existing:
+                    for key, value in game_dict.items():
+                        setattr(existing, key, value)
+                    updated += 1
+                else:
+                    db.add(Game(**game_dict))
+                    added += 1
             
-            existing = db.query(Game).filter(Game.id == game_id).first()
+            db.commit()
+            self._complete_sync_log(db, log_entry, 'success', added, updated)
+            logger.info(f"Games synced for {season} {season_type}: {added} added, {updated} updated, {skipped} skipped")
+            return {'added': added, 'updated': updated, 'skipped': skipped}
             
-            # Map all fields - use camelCase from API
-            game_dict = {
-                'id': game_id,
-                'season': game_data.get('season'),
-                'week': game_data.get('week'),
-                'season_type': game_data.get('season_type') or game_data.get('seasonType'),
-                'start_date': game_data.get('start_date') or game_data.get('startDate'),
-                'start_time_tbd': game_data.get('start_time_tbd') or game_data.get('startTimeTBD'),
-                'completed': game_data.get('completed', False),
-                'neutral_site': game_data.get('neutral_site') or game_data.get('neutralSite'),
-                'conference_game': game_data.get('conference_game') or game_data.get('conferenceGame'),
-                'attendance': game_data.get('attendance'),
-                'venue_id': game_data.get('venue_id') or game_data.get('venueId'),
-                'venue': game_data.get('venue'),
-                'home_id': game_data.get('home_id') or game_data.get('homeId'),
-                'home_team': home_team,
-                'home_conference': game_data.get('home_conference') or game_data.get('homeConference'),
-                'home_division': game_data.get('home_division') or game_data.get('homeDivision'),
-                'home_points': game_data.get('home_points') or game_data.get('homePoints'),
-                'home_line_scores': game_data.get('home_line_scores') or game_data.get('homeLineScores', []),
-                'home_post_win_prob': game_data.get('home_post_win_prob') or game_data.get('homePostWinProbability'),
-                'home_pregame_elo': game_data.get('home_pregame_elo') or game_data.get('homePregameElo'),
-                'home_postgame_elo': game_data.get('home_postgame_elo') or game_data.get('homePostgameElo'),
-                'away_id': game_data.get('away_id') or game_data.get('awayId'),
-                'away_team': away_team,
-                'away_conference': game_data.get('away_conference') or game_data.get('awayConference'),
-                'away_division': game_data.get('away_division') or game_data.get('awayDivision'),
-                'away_points': game_data.get('away_points') or game_data.get('awayPoints'),
-                'away_line_scores': game_data.get('away_line_scores') or game_data.get('awayLineScores', []),
-                'away_post_win_prob': game_data.get('away_post_win_prob') or game_data.get('awayPostWinProbability'),
-                'away_pregame_elo': game_data.get('away_pregame_elo') or game_data.get('awayPregameElo'),
-                'away_postgame_elo': game_data.get('away_postgame_elo') or game_data.get('awayPostgameElo'),
-                'excitement_index': game_data.get('excitement_index') or game_data.get('excitementIndex'),
-                'highlights': game_data.get('highlights', ''),
-                'notes': game_data.get('notes'),
-            }
-            
-            if existing:
-                for key, value in game_dict.items():
-                    setattr(existing, key, value)
-                updated += 1
-            else:
-                db.add(Game(**game_dict))
-                added += 1
-        
-        db.commit()
-        self._complete_sync_log(db, log_entry, 'success', added, updated)
-        logger.info(f"Games synced for {season} {season_type}: {added} added, {updated} updated, {skipped} skipped")
-        return {'added': added, 'updated': updated, 'skipped': skipped}
-        
-    except Exception as e:
-        db.rollback()
-        self._complete_sync_log(db, log_entry, 'failed', error=str(e))
-        raise
+        except Exception as e:
+            db.rollback()
+            self._complete_sync_log(db, log_entry, 'failed', error=str(e))
+            raise
     
     def sync_weekly_update(self, db: Session, season: int, week: int) -> Dict:
         """Quick weekly update during the season"""
