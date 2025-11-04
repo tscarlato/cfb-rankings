@@ -8,3 +8,9 @@ healthcheckPath = "/health"
 healthcheckTimeout = 300
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 10
+
+
+[[services]]
+name = "nightly-sync"
+command = "python sync_nightly.py"
+cron = "0 4 * * *"  # Run at 4 AM daily
