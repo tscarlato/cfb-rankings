@@ -833,6 +833,40 @@ async def check_environment():
     
     return env_vars
 
+# api.py - Add this debug endpoint
+
+@app.get("/admin/debug-api")
+async def debug_api():
+    """Debug: See what the CFBD API actually returns"""
+    import requests
+    
+    api_key = os.getenv("CFBD_API_KEY")
+    if not api_key:
+        return {"error": "API key not set"}
+    
+    try:
+        # Get one game from 2024
+        response = requests.get(
+            "https://api.collegefootballdata.com/games",
+            headers={'Authorization': f'Bearer {api_key}'},
+            params={'year': 2024, 'seasonType': 'regular', 'week': 1},
+            timeout=10
+        )
+        
+        games = response.json()
+        
+        if games:
+            # Return first game to see the structure
+            return {
+                "total_games": len(games),
+                "sample_game": games[0],
+                "sample_keys": list(games[0].keys())
+            }
+        else:
+            return {"error": "No games returned"}
+            
+    except Exception as e:
+        return {"error": str(e)}
     
 # ==================== RUN SERVER ====================
 
