@@ -7,8 +7,16 @@ from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_
 import logging
 import time
+import os
 
-from db_models_complete import *
+# This import is critical - make sure it works
+from db_models_complete import (
+    SessionLocal, Team, Conference, Venue, Game, GameLine, GameMedia,
+    TeamSeasonStat, TeamGameStats, APRanking, CustomRanking,
+    RecruitingTeam, Player, Drive, SyncLog,
+    GameWeather, TeamRecord, TeamTalent, TeamPPA, TeamSP, TeamSRS,
+    TeamFPI, TeamElo, Recruit, Coach, DraftPick, TransferPortal
+)
 
 logger = logging.getLogger(__name__)
 
