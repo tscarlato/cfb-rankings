@@ -77,7 +77,7 @@ def get_or_create_rankings(
         return ranking_cache[cache_key]
     
     # Import database-backed ranking system
-    from cfb_ranking_system_db import DatabaseLoader, RankingSystem, RankingFormula
+    from cfb_ranking_system import DatabaseLoader, RankingSystem, RankingFormula
     
     # Update formula if custom params provided
     if formula_params:
