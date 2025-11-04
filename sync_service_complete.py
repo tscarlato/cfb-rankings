@@ -230,80 +230,100 @@ class CFBDataSyncService:
     
     # ==================== GAMES ====================
     
-    def sync_games(self, db: Session, season: int, season_type: str = 'regular',
-                   week: Optional[int] = None) -> Dict:
-        """Sync games"""
-        log_entry = self._log_sync(db, 'games', season, season_type, week)
-        
-        try:
-            params = {'year': season, 'seasonType': season_type}
-            if week:
-                params['week'] = week
-            
-            games_data = self._api_request('/games', params)
-            added = updated = 0
-            
-            for game_data in games_data:
-                game_id = game_data.get('id')
-                if not game_id:
-                    continue
-                
-                existing = db.query(Game).filter(Game.id == game_id).first()
-                
-                game_dict = {
-                    'id': game_id,
-                    'season': game_data['season'],
-                    'week': game_data.get('week'),
-                    'season_type': game_data.get('season_type'),
-                    'start_date': game_data.get('start_date'),
-                    'start_time_tbd': game_data.get('start_time_tbd'),
-                    'completed': game_data.get('completed', False),
-                    'neutral_site': game_data.get('neutral_site'),
-                    'conference_game': game_data.get('conference_game'),
-                    'attendance': game_data.get('attendance'),
-                    'venue_id': game_data.get('venue_id'),
-                    'venue': game_data.get('venue'),
-                    'home_id': game_data.get('home_id'),
-                    'home_team': game_data.get('home_team'),
-                    'home_conference': game_data.get('home_conference'),
-                    'home_division': game_data.get('home_division'),
-                    'home_points': game_data.get('home_points'),
-                    'home_line_scores': game_data.get('home_line_scores', []),
-                    'home_post_win_prob': game_data.get('home_post_win_prob'),
-                    'home_pregame_elo': game_data.get('home_pregame_elo'),
-                    'home_postgame_elo': game_data.get('home_postgame_elo'),
-                    'away_id': game_data.get('away_id'),
-                    'away_team': game_data.get('away_team'),
-                    'away_conference': game_data.get('away_conference'),
-                    'away_division': game_data.get('away_division'),
-                    'away_points': game_data.get('away_points'),
-                    'away_line_scores': game_data.get('away_line_scores', []),
-                    'away_post_win_prob': game_data.get('away_post_win_prob'),
-                    'away_pregame_elo': game_data.get('away_pregame_elo'),
-                    'away_postgame_elo': game_data.get('away_postgame_elo'),
-                    'excitement_index': game_data.get('excitement_index'),
-                    'highlights': game_data.get('highlights'),
-                    'notes': game_data.get('notes'),
-                }
-                
-                if existing:
-                    for key, value in game_dict.items():
-                        setattr(existing, key, value)
-                    updated += 1
-                else:
-                    db.add(Game(**game_dict))
-                    added += 1
-            
-            db.commit()
-            self._complete_sync_log(db, log_entry, 'success', added, updated)
-            logger.info(f"Games synced for {season} {season_type}: {added} added, {updated} updated")
-            return {'added': added, 'updated': updated}
-            
-        except Exception as e:
-            db.rollback()
-            self._complete_sync_log(db, log_entry, 'failed', error=str(e))
-            raise
+# sync_service_complete.py - Update the sync_games function
+
+def sync_games(self, db: Session, season: int, season_type: str = 'regular',
+               week: Optional[int] = None) -> Dict:
+    """Sync games"""
+    log_entry = self._log_sync(db, 'games', season, season_type, week)
     
+    try:
+        params = {'year': season, 'seasonType': season_type}
+        if week:
+            params['week'] = week
+        
+        games_data = self._api_request('/games', params)
+        added = updated = 0
+        skipped = 0
+        
+        for game_data in games_data:
+            game_id = game_data.get('id')
+            if not game_id:
+                skipped += 1
+                continue
+            
+            # CRITICAL FIX: Skip games without team names
+            home_team = game_data.get('home_team')
+            away_team = game_data.get('away_team')
+            
+            if not home_team or not away_team:
+                logger.debug(f"Skipping game {game_id} - missing team names")
+                skipped += 1
+                continue
+            
+            # Also skip if it's a future/incomplete game without basic info
+            if game_data.get('completed') is False and game_data.get('home_points') is None:
+                logger.debug(f"Skipping incomplete future game {game_id}")
+                skipped += 1
+                continue
+            
+            existing = db.query(Game).filter(Game.id == game_id).first()
+            
+            # Map API response directly - matches their schema exactly
+            game_dict = {
+                'id': game_id,
+                'season': game_data['season'],
+                'week': game_data.get('week'),
+                'season_type': game_data.get('season_type'),
+                'start_date': game_data.get('start_date'),
+                'start_time_tbd': game_data.get('start_time_tbd'),
+                'completed': game_data.get('completed', False),
+                'neutral_site': game_data.get('neutral_site'),
+                'conference_game': game_data.get('conference_game'),
+                'attendance': game_data.get('attendance'),
+                'venue_id': game_data.get('venue_id'),
+                'venue': game_data.get('venue'),
+                'home_id': game_data.get('home_id'),
+                'home_team': home_team,  # Already validated above
+                'home_conference': game_data.get('home_conference'),
+                'home_division': game_data.get('home_division'),
+                'home_points': game_data.get('home_points'),
+                'home_line_scores': game_data.get('home_line_scores', []),
+                'home_post_win_prob': game_data.get('home_post_win_prob'),
+                'home_pregame_elo': game_data.get('home_pregame_elo'),
+                'home_postgame_elo': game_data.get('home_postgame_elo'),
+                'away_id': game_data.get('away_id'),
+                'away_team': away_team,  # Already validated above
+                'away_conference': game_data.get('away_conference'),
+                'away_division': game_data.get('away_division'),
+                'away_points': game_data.get('away_points'),
+                'away_line_scores': game_data.get('away_line_scores', []),
+                'away_post_win_prob': game_data.get('away_post_win_prob'),
+                'away_pregame_elo': game_data.get('away_pregame_elo'),
+                'away_postgame_elo': game_data.get('away_postgame_elo'),
+                'excitement_index': game_data.get('excitement_index'),
+                'highlights': game_data.get('highlights', ''),  # Ensure not None
+                'notes': game_data.get('notes'),
+            }
+            
+            if existing:
+                for key, value in game_dict.items():
+                    setattr(existing, key, value)
+                updated += 1
+            else:
+                db.add(Game(**game_dict))
+                added += 1
+        
+        db.commit()
+        self._complete_sync_log(db, log_entry, 'success', added, updated)
+        logger.info(f"Games synced for {season} {season_type}: {added} added, {updated} updated, {skipped} skipped")
+        return {'added': added, 'updated': updated, 'skipped': skipped}
+        
+    except Exception as e:
+        db.rollback()
+        self._complete_sync_log(db, log_entry, 'failed', error=str(e))
+        raise
+        
     def sync_game_lines(self, db: Session, season: int, week: Optional[int] = None) -> Dict:
         """Sync betting lines"""
         log_entry = self._log_sync(db, 'game_lines', season, week=week)
