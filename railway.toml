@@ -1,0 +1,11 @@
+# railway.toml
+[build]
+builder = "nixpacks"
+
+[deploy]
+startCommand = "python api.py"
+healthcheckPath = "/health"
+healthcheckTimeout = 300
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 10
+```

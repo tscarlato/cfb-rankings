@@ -1,20 +1,27 @@
-# api.py - Refactored to use database
+# api.py - Complete version with all features and Railway compatibility
 
 from fastapi import FastAPI, HTTPException, Query, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 from typing import List, Optional
 from sqlalchemy.orm import Session
+from sqlalchemy import or_, and_
 from datetime import datetime
 import uvicorn
 import logging
+import os
 
-from db_models_complete import get_db, Game, Team, CustomRanking, init_db
+from db_models_complete import (
+    get_db, Game, Team, CustomRanking, SyncLog, init_db, 
+    engine, DATABASE_URL, SessionLocal
+)
 from cfb_ranking_system import RankingSystem, RankingFormula
-from sync_service_complete import CFBDataSyncService, run_daily_sync
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
 
 app = FastAPI(
@@ -32,7 +39,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Pydantic models for API responses
+# ==================== PYDANTIC MODELS ====================
+
 class GameResultResponse(BaseModel):
     opponent: str
     opponent_record: str
@@ -64,19 +72,59 @@ class FormulaParams(BaseModel):
     three_score_multiplier: float = 1.5
     strength_of_schedule_multiplier: float = 1.0
 
-# Initialize database on startup
+# ==================== STARTUP ====================
+
 @app.on_event("startup")
 async def startup_event():
     """Initialize database and start background scheduler"""
-    init_db()
-    logger.info("Database initialized")
-    
-    # Start background scheduler for daily syncs
-    from apscheduler.schedulers.background import BackgroundScheduler
-    scheduler = BackgroundScheduler()
-    scheduler.add_job(run_daily_sync, 'cron', hour=6)  # Run at 6 AM daily
-    scheduler.start()
-    logger.info("Background scheduler started")
+    try:
+        logger.info("=" * 60)
+        logger.info("CFB Rankings API Starting Up")
+        logger.info("=" * 60)
+        
+        # Check database connection
+        logger.info("Testing database connection...")
+        with engine.connect() as conn:
+            conn.execute("SELECT 1")
+        logger.info("✓ Database connection successful!")
+        
+        # Initialize tables
+        logger.info("Initializing database tables...")
+        init_db()
+        logger.info("✓ Database tables initialized!")
+        
+        # Check for existing data
+        db = SessionLocal()
+        try:
+            game_count = db.query(Game).count()
+            team_count = db.query(Team).count()
+            logger.info(f"✓ Database contains {team_count} teams and {game_count} games")
+        finally:
+            db.close()
+        
+        # Start scheduler if enabled
+        if os.getenv("ENABLE_SCHEDULER", "false").lower() == "true":
+            from apscheduler.schedulers.background import BackgroundScheduler
+            from sync_service_complete import run_daily_sync
+            
+            scheduler = BackgroundScheduler()
+            scheduler.add_job(run_daily_sync, 'cron', hour=6)
+            scheduler.start()
+            logger.info("✓ Background scheduler started (runs daily at 6 AM)")
+        else:
+            logger.info("ℹ Background scheduler disabled (set ENABLE_SCHEDULER=true to enable)")
+        
+        logger.info("=" * 60)
+        logger.info("CFB Rankings API Ready!")
+        logger.info("=" * 60)
+        
+    except Exception as e:
+        logger.error(f"✗ Startup error: {e}")
+        logger.warning("App will continue but some features may not work")
+        import traceback
+        traceback.print_exc()
+
+# ==================== HELPER FUNCTIONS ====================
 
 def compute_rankings_from_db(
     db: Session,
@@ -87,16 +135,6 @@ def compute_rankings_from_db(
 ) -> RankingSystem:
     """
     Compute rankings from database games.
-    
-    Args:
-        db: Database session
-        year: Season year
-        season_type: 'regular' or 'postseason'
-        week: Optional week number (includes all games up to and including this week)
-        formula_params: Optional custom formula parameters
-    
-    Returns:
-        RankingSystem with computed rankings
     """
     # Update formula if custom params provided
     if formula_params:
@@ -106,21 +144,15 @@ def compute_rankings_from_db(
         RankingFormula.THREE_SCORE_MULTIPLIER = formula_params.three_score_multiplier
         RankingFormula.STRENGTH_OF_SCHEDULE_MULTIPLIER = formula_params.strength_of_schedule_multiplier
     else:
-        # Reset to defaults
-        RankingFormula.WIN_LOSS_MULTIPLIER = 1.0
-        RankingFormula.ONE_SCORE_MULTIPLIER = 1.0
-        RankingFormula.TWO_SCORE_MULTIPLIER = 1.3
-        RankingFormula.THREE_SCORE_MULTIPLIER = 1.5
-        RankingFormula.STRENGTH_OF_SCHEDULE_MULTIPLIER = 1.0
+        RankingFormula.reset_to_defaults()
     
     # Query games from database
     query = db.query(Game).filter(
         Game.season == year,
         Game.season_type == season_type,
-        Game.completed == True  # Only completed games
+        Game.completed == True
     )
     
-    # Filter by week if specified (include all games up to this week)
     if week is not None:
         query = query.filter(Game.week <= week)
     
@@ -129,16 +161,14 @@ def compute_rankings_from_db(
     if not games:
         raise ValueError(f"No games found for {year} {season_type}" + (f" week {week}" if week else ""))
     
-    # Build ranking system from database games
+    # Build ranking system
     system = RankingSystem()
     
     for game in games:
-        # Skip games without scores
         if game.home_points is None or game.away_points is None:
             continue
         
-        # Determine FBS status
-        # Query teams to get classification
+        # Get team classifications
         home_team_obj = db.query(Team).filter(Team.school == game.home_team).first()
         away_team_obj = db.query(Team).filter(Team.school == game.away_team).first()
         
@@ -192,19 +222,17 @@ def save_rankings_to_db(
             CustomRanking.season == year,
             CustomRanking.season_type == season_type,
             CustomRanking.week == week,
-            CustomRanking.team == team.name,
-            CustomRanking.formula_params == formula_json
+            CustomRanking.team == team.name
         ).first()
         
         if existing:
-            # Update existing
             existing.rank = rank
             existing.ranking_value = float(team.ranking)
             existing.wins = wins
             existing.losses = losses
+            existing.formula_params = formula_json
             existing.computed_at = datetime.utcnow()
         else:
-            # Create new
             db.add(CustomRanking(
                 season=year,
                 season_type=season_type,
@@ -245,10 +273,93 @@ def format_team_response(team, system: RankingSystem) -> TeamResponse:
         games=games
     )
 
+# ==================== ROOT & HEALTH ENDPOINTS ====================
+
 @app.get("/")
 async def root():
-    """Serve the frontend HTML"""
-    return FileResponse('cfb-rankings.html')
+    """Basic API info"""
+    return {
+        "name": "College Football Rankings API",
+        "version": "2.0.0",
+        "status": "running",
+        "database_configured": bool(DATABASE_URL),
+        "endpoints": {
+            "rankings": "/rankings",
+            "team": "/team/{team_name}",
+            "games": "/games",
+            "health": "/health",
+            "docs": "/docs"
+        }
+    }
+
+@app.get("/health")
+async def health_check():
+    """Health check with database connectivity test"""
+    response = {
+        "status": "healthy",
+        "database": "not_configured",
+        "timestamp": datetime.utcnow().isoformat()
+    }
+    
+    try:
+        with engine.connect() as conn:
+            conn.execute("SELECT 1")
+        response["database"] = "connected"
+        
+        # Get some stats
+        db = SessionLocal()
+        try:
+            game_count = db.query(Game).count()
+            team_count = db.query(Team).count()
+            response["total_games"] = game_count
+            response["total_teams"] = team_count
+        except Exception as e:
+            logger.warning(f"Could not get database stats: {e}")
+        finally:
+            db.close()
+            
+    except Exception as e:
+        logger.warning(f"Health check database test failed: {e}")
+        response["database"] = "unavailable"
+        response["database_error"] = str(e)
+    
+    return response
+
+@app.get("/db-status")
+async def db_status():
+    """Detailed database status"""
+    try:
+        # Hide sensitive info
+        safe_url = "not_configured"
+        if DATABASE_URL:
+            safe_url = DATABASE_URL.split('@')[0] + "@***" if '@' in DATABASE_URL else "***"
+        
+        status = {
+            "database_url_configured": bool(DATABASE_URL),
+            "database_url": safe_url,
+            "connection": "unknown",
+            "using_sqlite": DATABASE_URL.startswith("sqlite") if DATABASE_URL else False
+        }
+        
+        try:
+            with engine.connect() as conn:
+                result = conn.execute("SELECT version()")
+                version_row = result.fetchone()
+                version = version_row[0] if version_row else "unknown"
+                status["connection"] = "success"
+                status["version"] = version
+        except Exception as e:
+            status["connection"] = "failed"
+            status["error"] = str(e)
+        
+        return status
+    except Exception as e:
+        return {
+            "error": str(e),
+            "connection": "failed"
+        }
+
+# ==================== RANKINGS ENDPOINTS ====================
 
 @app.get("/rankings", response_model=RankingsResponse)
 async def get_rankings(
@@ -323,7 +434,6 @@ async def get_team(
     Get detailed information for a specific team.
     """
     try:
-        # Compute rankings
         system = compute_rankings_from_db(db, year, season_type, week)
         
         if team_name not in system.teams:
@@ -387,6 +497,8 @@ async def get_saved_rankings(
         logger.error(f"Error getting saved rankings: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+# ==================== GAMES ENDPOINTS ====================
+
 @app.get("/games")
 async def get_games(
     year: int = Query(2024, description="Season year"),
@@ -394,6 +506,7 @@ async def get_games(
     week: Optional[int] = Query(None, description="Week number"),
     team: Optional[str] = Query(None, description="Filter by team"),
     completed: Optional[bool] = Query(None, description="Filter by completion status"),
+    limit: int = Query(100, description="Max number of games to return"),
     db: Session = Depends(get_db)
 ):
     """
@@ -410,13 +523,13 @@ async def get_games(
         
         if team:
             query = query.filter(
-                (Game.home_team == team) | (Game.away_team == team)
+                or_(Game.home_team == team, Game.away_team == team)
             )
         
         if completed is not None:
             query = query.filter(Game.completed == completed)
         
-        games = query.order_by(Game.week, Game.start_date).all()
+        games = query.order_by(Game.week, Game.start_date).limit(limit).all()
         
         return {
             'games': [
@@ -429,16 +542,20 @@ async def get_games(
                     'away_points': g.away_points,
                     'completed': g.completed,
                     'start_date': g.start_date,
-                    'venue': g.venue
+                    'venue': g.venue,
+                    'neutral_site': g.neutral_site
                 }
                 for g in games
             ],
-            'total': len(games)
+            'total': len(games),
+            'limited': len(games) == limit
         }
         
     except Exception as e:
         logger.error(f"Error getting games: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+# ==================== ADMIN ENDPOINTS ====================
 
 @app.post("/admin/sync")
 async def trigger_sync(
@@ -449,11 +566,17 @@ async def trigger_sync(
 ):
     """
     Manually trigger a data sync from College Football Data API.
+    Requires CFBD_API_KEY environment variable.
     """
-    import os
-    
     try:
-        api_key = os.getenv("CFBD_API_KEY", "mBIqtiooiszQC3myFOJyvK4y8j5ZUzRr5JXRCjl0yjOvXIOFrdKLix4b+upMY2cw")
+        api_key = os.getenv("CFBD_API_KEY")
+        if not api_key:
+            raise HTTPException(
+                status_code=500, 
+                detail="CFBD_API_KEY not configured. Set environment variable to enable syncing."
+            )
+        
+        from sync_service_complete import CFBDataSyncService
         sync_service = CFBDataSyncService(api_key)
         
         if sync_type == "weekly" and week:
@@ -466,28 +589,34 @@ async def trigger_sync(
                 'games_postseason': sync_service.sync_games(db, season, 'postseason')
             }
         else:
-            raise HTTPException(status_code=400, detail="Invalid sync_type")
+            raise HTTPException(status_code=400, detail="Invalid sync_type. Must be: weekly, full, or games_only")
         
         return {"status": "success", "results": result}
         
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Sync failed: {e}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/stats/sync-log")
+@app.get("/admin/sync-log")
 async def get_sync_log(
     limit: int = Query(50, description="Number of records to return"),
+    status: Optional[str] = Query(None, description="Filter by status"),
     db: Session = Depends(get_db)
 ):
     """
     Get sync log history.
     """
-    from db_models_complete import SyncLog
-    
     try:
-        logs = db.query(SyncLog).order_by(
-            SyncLog.started_at.desc()
-        ).limit(limit).all()
+        query = db.query(SyncLog).order_by(SyncLog.started_at.desc())
+        
+        if status:
+            query = query.filter(SyncLog.status == status)
+        
+        logs = query.limit(limit).all()
         
         return {
             'logs': [
@@ -504,37 +633,44 @@ async def get_sync_log(
                     'completed_at': log.completed_at.isoformat() if log.completed_at else None
                 }
                 for log in logs
-            ]
+            ],
+            'total': len(logs)
         }
         
     except Exception as e:
         logger.error(f"Error getting sync log: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/health")
-async def health_check(db: Session = Depends(get_db)):
-    """Health check endpoint with database connectivity test"""
+# ==================== STATS ENDPOINTS ====================
+
+@app.get("/stats/summary")
+async def get_stats_summary(db: Session = Depends(get_db)):
+    """Get summary statistics about the database"""
     try:
-        # Test database connection
-        db.execute("SELECT 1")
-        
-        # Get some basic stats
-        from db_models_complete import SyncLog
-        last_sync = db.query(SyncLog).order_by(
-            SyncLog.completed_at.desc()
-        ).first()
-        
-        game_count = db.query(Game).count()
-        
-        return {
-            "status": "healthy",
-            "database": "connected",
-            "total_games": game_count,
-            "last_sync": last_sync.completed_at.isoformat() if last_sync and last_sync.completed_at else None
+        stats = {
+            "teams": db.query(Team).count(),
+            "games": db.query(Game).count(),
+            "completed_games": db.query(Game).filter(Game.completed == True).count(),
+            "custom_rankings": db.query(CustomRanking).count(),
         }
+        
+        # Get seasons with data
+        seasons = db.query(Game.season).distinct().all()
+        stats["seasons"] = sorted([s[0] for s in seasons])
+        
+        # Get most recent sync
+        last_sync = db.query(SyncLog).order_by(SyncLog.completed_at.desc()).first()
+        if last_sync and last_sync.completed_at:
+            stats["last_sync"] = last_sync.completed_at.isoformat()
+            stats["last_sync_status"] = last_sync.status
+        
+        return stats
+        
     except Exception as e:
-        logger.error(f"Health check failed: {e}")
-        raise HTTPException(status_code=503, detail=f"Service unhealthy: {str(e)}")
+        logger.error(f"Error getting stats summary: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ==================== RUN SERVER ====================
 
 if __name__ == "__main__":
     import os

@@ -1,4 +1,4 @@
-# db_models_complete.py - Complete schema mirroring all CFBD API endpoints
+# db_models_complete.py - Complete version with Railway compatibility
 
 from sqlalchemy import (
     create_engine, Column, Integer, String, Boolean, TIMESTAMP, 
@@ -8,10 +8,42 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 from datetime import datetime
 import os
+import logging
 
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://user:password@localhost:5432/cfb_rankings")
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-engine = create_engine(DATABASE_URL)
+# Get DATABASE_URL from environment with fallback
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+if not DATABASE_URL:
+    logger.warning("DATABASE_URL not set, using SQLite fallback")
+    DATABASE_URL = "sqlite:///./cfb_rankings.db"
+else:
+    # Railway/Heroku sometimes use 'postgres://' but SQLAlchemy needs 'postgresql://'
+    if DATABASE_URL.startswith("postgres://"):
+        DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+        logger.info("Fixed DATABASE_URL scheme from postgres:// to postgresql://")
+    logger.info(f"Connecting to database: {DATABASE_URL.split('@')[0] if '@' in DATABASE_URL else '***'}@***")
+
+# Create engine with connection pooling settings
+engine_kwargs = {
+    'pool_pre_ping': True,  # Test connections before using
+    'pool_recycle': 3600,   # Recycle connections after 1 hour
+}
+
+# Add SQLite-specific settings if using SQLite
+if DATABASE_URL.startswith("sqlite"):
+    engine_kwargs['connect_args'] = {'check_same_thread': False}
+    logger.info("Using SQLite with thread-safe settings")
+
+try:
+    engine = create_engine(DATABASE_URL, **engine_kwargs)
+    logger.info("Database engine created successfully")
+except Exception as e:
+    logger.error(f"Failed to create database engine: {e}")
+    raise
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
@@ -33,7 +65,7 @@ class Team(Base):
     division = Column(String(50))
     color = Column(String(7))
     alt_color = Column(String(7))
-    logos = Column(ARRAY(String))
+    logos = Column(ARRAY(String) if not DATABASE_URL.startswith("sqlite") else JSON)
     twitter = Column(String(100))
     
     # Location data
@@ -114,7 +146,7 @@ class Game(Base):
     home_conference = Column(String(100))
     home_division = Column(String(50))
     home_points = Column(Integer)
-    home_line_scores = Column(ARRAY(Integer))
+    home_line_scores = Column(ARRAY(Integer) if not DATABASE_URL.startswith("sqlite") else JSON)
     home_post_win_prob = Column(Float)
     home_pregame_elo = Column(Integer)
     home_postgame_elo = Column(Integer)
@@ -124,7 +156,7 @@ class Game(Base):
     away_conference = Column(String(100))
     away_division = Column(String(50))
     away_points = Column(Integer)
-    away_line_scores = Column(ARRAY(Integer))
+    away_line_scores = Column(ARRAY(Integer) if not DATABASE_URL.startswith("sqlite") else JSON)
     away_post_win_prob = Column(Float)
     away_pregame_elo = Column(Integer)
     away_postgame_elo = Column(Integer)
@@ -278,13 +310,12 @@ class Play(Base):
     play_text = Column(Text)
     play_type = Column(String(100))
     
-    ppa = Column(Float)  # Predicted Points Added
+    ppa = Column(Float)
     scoring = Column(Boolean)
     
-    # Additional play classifications
     rush_pass = Column(String(20))
     success = Column(Boolean)
-    epa = Column(Float)  # Expected Points Added
+    epa = Column(Float)
     garbage_time = Column(Boolean)
     
     created_at = Column(TIMESTAMP, default=datetime.utcnow)
@@ -305,8 +336,8 @@ class PlayStat(Base):
     player_id = Column(Integer, index=True)
     player_name = Column(String(200))
     
-    stat_type = Column(String(50))  # RUSH, PASS, REC, etc.
-    stat = Column(Integer)  # yards, attempts, etc.
+    stat_type = Column(String(50))
+    stat = Column(Integer)
     
     created_at = Column(TIMESTAMP, default=datetime.utcnow)
 
@@ -354,7 +385,6 @@ class TeamGameStats(Base):
     points = Column(Integer)
     conference = Column(String(100))
     
-    # Store all stats as JSON (too many individual stats)
     stats = Column(JSON)
     
     created_at = Column(TIMESTAMP, default=datetime.utcnow)
@@ -418,7 +448,6 @@ class TeamMatchup(Base):
     team2_wins = Column(Integer)
     ties = Column(Integer)
     
-    # Store game history as JSON
     games = Column(JSON)
     
     created_at = Column(TIMESTAMP, default=datetime.utcnow)
@@ -434,7 +463,6 @@ class TeamPPA(Base):
     conference = Column(String(100))
     team = Column(String(100), nullable=False, index=True)
     
-    # Overall PPA
     offense_overall = Column(Float)
     offense_passing = Column(Float)
     offense_rushing = Column(Float)
@@ -463,7 +491,7 @@ class TeamSP(Base):
     rating = Column(Float)
     ranking = Column(Integer)
     second_order_wins = Column(Float)
-    sos = Column(Float)  # Strength of schedule
+    sos = Column(Float)
     
     offense_ranking = Column(Integer)
     offense_rating = Column(Float)
@@ -593,7 +621,7 @@ class WinProbability(Base):
     home_score = Column(Integer)
     away_score = Column(Integer)
     
-    time_remaining = Column(Integer)  # seconds
+    time_remaining = Column(Integer)
     yard_line = Column(Integer)
     down = Column(Integer)
     distance = Column(Integer)
@@ -639,8 +667,8 @@ class Recruit(Base):
     """Mirror of /recruiting/players endpoint"""
     __tablename__ = "recruits"
     
-    id = Column(Integer, primary_key=True)  # API recruit ID
-    recruit_type = Column(String(20))  # HighSchool, JUCO, PrepSchool
+    id = Column(Integer, primary_key=True)
+    recruit_type = Column(String(20))
     year = Column(Integer, nullable=False, index=True)
     ranking = Column(Integer)
     name = Column(String(200))
@@ -665,7 +693,7 @@ class Player(Base):
     """Mirror of /player/search and /roster endpoints"""
     __tablename__ = "players"
     
-    id = Column(Integer, primary_key=True)  # API player ID
+    id = Column(Integer, primary_key=True)
     team = Column(String(100), index=True)
     name = Column(String(200))
     first_name = Column(String(100))
@@ -673,7 +701,7 @@ class Player(Base):
     weight = Column(Integer)
     height = Column(Integer)
     jersey = Column(Integer)
-    year = Column(Integer, index=True)  # class year
+    year = Column(Integer, index=True)
     position = Column(String(20), index=True)
     
     home_city = Column(String(100))
@@ -683,7 +711,7 @@ class Player(Base):
     home_longitude = Column(Float)
     home_county_fips = Column(String(20))
     
-    recruit_ids = Column(ARRAY(Integer))
+    recruit_ids = Column(ARRAY(Integer) if not DATABASE_URL.startswith("sqlite") else JSON)
     
     created_at = Column(TIMESTAMP, default=datetime.utcnow)
     updated_at = Column(TIMESTAMP, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -698,8 +726,8 @@ class PlayerSeasonStats(Base):
     player = Column(String(200))
     team = Column(String(100), index=True)
     conference = Column(String(100))
-    category = Column(String(50))  # passing, rushing, receiving, etc.
-    stat_type = Column(String(50))  # YDS, TD, etc.
+    category = Column(String(50))
+    stat_type = Column(String(50))
     stat = Column(Float)
     
     created_at = Column(TIMESTAMP, default=datetime.utcnow)
@@ -820,11 +848,9 @@ class Coach(Base):
     last_name = Column(String(100))
     hire_date = Column(String(50))
     
-    # Current position
     school = Column(String(100), index=True)
     year = Column(Integer, index=True)
     
-    # Seasons info as JSON (since it's an array)
     seasons = Column(JSON)
     
     created_at = Column(TIMESTAMP, default=datetime.utcnow)
@@ -916,7 +942,7 @@ class SyncLog(Base):
     season = Column(Integer)
     season_type = Column(String(20))
     week = Column(Integer)
-    status = Column(String(20), index=True)  # started, success, failed, partial
+    status = Column(String(20), index=True)
     records_added = Column(Integer, default=0)
     records_updated = Column(Integer, default=0)
     error_message = Column(Text)
@@ -934,8 +960,27 @@ def get_db():
 
 def init_db():
     """Initialize all tables"""
-    Base.metadata.create_all(bind=engine)
+    try:
+        logger.info("Creating database tables...")
+        Base.metadata.create_all(bind=engine)
+        logger.info("Database tables created successfully")
+    except Exception as e:
+        logger.error(f"Failed to create database tables: {e}")
+        raise
 
 def drop_all():
     """Drop all tables (use with caution!)"""
+    logger.warning("Dropping all database tables...")
     Base.metadata.drop_all(bind=engine)
+    logger.info("All tables dropped")
+
+def test_connection():
+    """Test database connection"""
+    try:
+        with engine.connect() as conn:
+            result = conn.execute("SELECT 1")
+            logger.info("Database connection test successful")
+            return True
+    except Exception as e:
+        logger.error(f"Database connection test failed: {e}")
+        return False
