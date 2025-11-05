@@ -231,6 +231,244 @@ async def health_check():
     """Health check endpoint."""
     return {"status": "healthy"}
 
+
+# Add this to your api.py file
+# This creates an endpoint you can call to trigger the sync
+
+from threading import Thread
+import requests
+import time
+from sqlalchemy import text
+
+# Add this at the end of api.py, before if __name__ == "__main__"
+
+@app.post("/admin/populate-database")
+async def populate_database(
+    years: int = Query(5, description="Number of years to sync"),
+    background: bool = Query(True, description="Run in background")
+):
+    """
+    Populate database with historical data.
+    WARNING: This can take 5-10 minutes. Only run once!
+    
+    Usage:
+    POST /admin/populate-database?years=5&background=true
+    """
+    
+    def run_sync(years_to_sync: int):
+        """Run the sync in a separate thread"""
+        try:
+            print(f"Starting database population for {years_to_sync} years...")
+            
+            api_key = os.getenv("CFBD_API_KEY")
+            if not api_key:
+                print("ERROR: CFBD_API_KEY not set")
+                return
+            
+            # Get database connection
+            from sqlalchemy import create_engine
+            db_url = os.getenv("DATABASE_URL")
+            if not db_url:
+                print("ERROR: DATABASE_URL not set")
+                return
+            
+            engine = create_engine(db_url)
+            base_url = "https://api.collegefootballdata.com"
+            headers = {'Authorization': f'Bearer {api_key}'}
+            
+            # Sync teams
+            print("Syncing teams...")
+            try:
+                response = requests.get(f"{base_url}/teams/fbs", headers=headers, timeout=30)
+                response.raise_for_status()
+                teams_data = response.json()
+                
+                with engine.connect() as conn:
+                    added = updated = 0
+                    for team in teams_data:
+                        school = team.get('school')
+                        if not school:
+                            continue
+                        
+                        existing = conn.execute(
+                            text("SELECT id FROM teams WHERE school = :school"),
+                            {"school": school}
+                        ).fetchone()
+                        
+                        if existing:
+                            conn.execute(
+                                text("""
+                                    UPDATE teams SET
+                                        mascot = :mascot,
+                                        abbreviation = :abbreviation,
+                                        classification = :classification,
+                                        conference = :conference,
+                                        division = :division,
+                                        color = :color,
+                                        alt_color = :alt_color
+                                    WHERE school = :school
+                                """),
+                                {
+                                    "school": school,
+                                    "mascot": team.get('mascot'),
+                                    "abbreviation": team.get('abbreviation'),
+                                    "classification": team.get('classification', 'fbs'),
+                                    "conference": team.get('conference'),
+                                    "division": team.get('division'),
+                                    "color": team.get('color'),
+                                    "alt_color": team.get('alt_color')
+                                }
+                            )
+                            updated += 1
+                        else:
+                            conn.execute(
+                                text("""
+                                    INSERT INTO teams 
+                                    (school, mascot, abbreviation, classification, conference, 
+                                     division, color, alt_color)
+                                    VALUES 
+                                    (:school, :mascot, :abbreviation, :classification, :conference,
+                                     :division, :color, :alt_color)
+                                """),
+                                {
+                                    "school": school,
+                                    "mascot": team.get('mascot'),
+                                    "abbreviation": team.get('abbreviation'),
+                                    "classification": team.get('classification', 'fbs'),
+                                    "conference": team.get('conference'),
+                                    "division": team.get('division'),
+                                    "color": team.get('color'),
+                                    "alt_color": team.get('alt_color')
+                                }
+                            )
+                            added += 1
+                    
+                    conn.commit()
+                
+                print(f"Teams synced: {added} added, {updated} updated")
+            except Exception as e:
+                print(f"Error syncing teams: {e}")
+            
+            # Sync games for multiple years
+            from datetime import datetime
+            current_year = datetime.now().year
+            start_year = current_year - years_to_sync + 1
+            
+            total_games = 0
+            for year in range(start_year, current_year + 1):
+                for season_type in ['regular', 'postseason']:
+                    print(f"Syncing {year} {season_type}...")
+                    
+                    try:
+                        time.sleep(0.15)  # Rate limiting
+                        response = requests.get(
+                            f"{base_url}/games",
+                            headers=headers,
+                            params={'year': year, 'seasonType': season_type},
+                            timeout=30
+                        )
+                        response.raise_for_status()
+                        games_data = response.json()
+                        
+                        with engine.connect() as conn:
+                            added = updated = 0
+                            for game in games_data:
+                                game_id = game.get('id')
+                                home_team = game.get('homeTeam') or game.get('home_team')
+                                away_team = game.get('awayTeam') or game.get('away_team')
+                                
+                                if not game_id or not home_team or not away_team:
+                                    continue
+                                
+                                existing = conn.execute(
+                                    text("SELECT id FROM games WHERE id = :id"),
+                                    {"id": game_id}
+                                ).fetchone()
+                                
+                                game_values = {
+                                    "id": game_id,
+                                    "season": game.get('season', year),
+                                    "week": game.get('week'),
+                                    "season_type": game.get('seasonType', season_type),
+                                    "start_date": game.get('startDate'),
+                                    "completed": game.get('completed', False),
+                                    "home_team": home_team,
+                                    "away_team": away_team,
+                                    "home_points": game.get('homePoints'),
+                                    "away_points": game.get('awayPoints'),
+                                    "venue": game.get('venue'),
+                                    "neutral_site": game.get('neutralSite', False),
+                                    "conference_game": game.get('conferenceGame', False)
+                                }
+                                
+                                if existing:
+                                    conn.execute(
+                                        text("""
+                                            UPDATE games SET
+                                                season = :season, week = :week, season_type = :season_type,
+                                                start_date = :start_date, completed = :completed,
+                                                home_team = :home_team, away_team = :away_team,
+                                                home_points = :home_points, away_points = :away_points,
+                                                venue = :venue, neutral_site = :neutral_site,
+                                                conference_game = :conference_game
+                                            WHERE id = :id
+                                        """),
+                                        game_values
+                                    )
+                                    updated += 1
+                                else:
+                                    conn.execute(
+                                        text("""
+                                            INSERT INTO games 
+                                            (id, season, week, season_type, start_date, completed,
+                                             home_team, away_team, home_points, away_points,
+                                             venue, neutral_site, conference_game)
+                                            VALUES 
+                                            (:id, :season, :week, :season_type, :start_date, :completed,
+                                             :home_team, :away_team, :home_points, :away_points,
+                                             :venue, :neutral_site, :conference_game)
+                                        """),
+                                        game_values
+                                    )
+                                    added += 1
+                            
+                            conn.commit()
+                        
+                        games_count = added + updated
+                        total_games += games_count
+                        print(f"{year} {season_type}: {games_count} games")
+                        
+                    except Exception as e:
+                        print(f"Error syncing {year} {season_type}: {e}")
+            
+            print(f"Sync complete! Total: {total_games} games")
+            
+        except Exception as e:
+            print(f"Fatal error during sync: {e}")
+            import traceback
+            traceback.print_exc()
+    
+    if background:
+        # Run in background thread
+        thread = Thread(target=run_sync, args=(years,))
+        thread.daemon = True
+        thread.start()
+        
+        return {
+            "status": "started",
+            "message": f"Database population started in background for {years} years. Check Railway logs for progress.",
+            "estimated_time": "5-10 minutes",
+            "note": "This endpoint returns immediately. The sync runs in the background."
+        }
+    else:
+        # Run synchronously (will timeout on Railway after 30s, but sync continues)
+        run_sync(years)
+        return {
+            "status": "complete",
+            "message": "Database population complete"
+        }
+
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))
     uvicorn.run(app, host="0.0.0.0", port=port)
