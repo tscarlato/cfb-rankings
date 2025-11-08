@@ -2,8 +2,14 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { ChevronUp, ChevronDown, Minus, Settings, Calendar, Search, RefreshCw, Trophy } from 'lucide-react';
 
 const App = () => {
-  const [scoreMultiplier, setScoreMultiplier] = useState(1.3);
+  // Formula parameters
+  const [winMultiplier, setWinMultiplier] = useState(1.0);
+  const [lossMultiplier, setLossMultiplier] = useState(1.0);
+  const [oneScoreMultiplier, setOneScoreMultiplier] = useState(1.0);
+  const [twoScoreMultiplier, setTwoScoreMultiplier] = useState(1.3);
+  const [threeScoreMultiplier, setThreeScoreMultiplier] = useState(1.5);
   const [sosMultiplier, setSosMultiplier] = useState(1.0);
+
   const [showControls, setShowControls] = useState(false);
   const [selectedYear, setSelectedYear] = useState(2025);
   const [selectedWeek, setSelectedWeek] = useState('');
@@ -105,15 +111,15 @@ const App = () => {
     try {
       let url = `/rankings?year=${selectedYear}&season_type=${selectedSeason}`;
       if (selectedWeek) url += `&week=${selectedWeek}`;
-      url += `&win_loss_multiplier=1.0`;
-      url += `&one_score_multiplier=1.0`;
-      url += `&two_score_multiplier=${scoreMultiplier}`;
-      url += `&three_score_multiplier=${sosMultiplier}`;
-      url += `&strength_of_schedule_multiplier=1.0`;
+      url += `&win_loss_multiplier=${winMultiplier}`;
+      url += `&one_score_multiplier=${oneScoreMultiplier}`;
+      url += `&two_score_multiplier=${twoScoreMultiplier}`;
+      url += `&three_score_multiplier=${threeScoreMultiplier}`;
+      url += `&strength_of_schedule_multiplier=${sosMultiplier}`;
 
       const response = await fetch(url);
       if (!response.ok) throw new Error(`Failed to fetch rankings: ${response.status}`);
-      
+
       const data = await response.json();
       setTeams(data.teams || []);
     } catch (err) {
@@ -126,7 +132,7 @@ const App = () => {
   // Fetch on mount and when parameters change
   useEffect(() => {
     fetchRankings();
-  }, [selectedYear, selectedWeek, selectedSeason, scoreMultiplier, sosMultiplier]);
+  }, [selectedYear, selectedWeek, selectedSeason, winMultiplier, lossMultiplier, oneScoreMultiplier, twoScoreMultiplier, threeScoreMultiplier, sosMultiplier]);
 
   // Filter teams by search
   const filteredTeams = useMemo(() => {
@@ -276,55 +282,193 @@ const App = () => {
         {/* Control Panel */}
         {showControls && (
           <div className="mb-6 sm:mb-8 bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-xl p-4 sm:p-6">
-            <h2 className="text-lg sm:text-xl font-semibold mb-4 flex items-center gap-2">
+            <h2 className="text-lg sm:text-xl font-semibold mb-6 flex items-center gap-2">
               <Settings size={20} className="text-orange-500" />
-              Formula Controls
+              Ranking Formula Customization
             </h2>
-            
-            <div className="grid sm:grid-cols-2 gap-4 sm:gap-6">
-              {/* Score Margin Multiplier */}
-              <div>
-                <div className="flex justify-between items-center mb-3">
-                  <label className="text-sm font-medium text-slate-300">
-                    2-Score Game Weight (9-16pts)
-                  </label>
-                  <span className="text-lg font-bold text-orange-500">{scoreMultiplier.toFixed(1)}x</span>
-                </div>
-                <input
-                  type="range"
-                  min="0.5"
-                  max="2.0"
-                  step="0.1"
-                  value={scoreMultiplier}
-                  onChange={(e) => setScoreMultiplier(parseFloat(e.target.value))}
-                  className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-orange-500"
-                />
-              </div>
 
-              {/* 3+ Score Multiplier */}
+            {/* Section 1: Game Outcome Impact */}
+            <div className="mb-6 p-4 bg-slate-900/50 rounded-lg border border-slate-600">
+              <h3 className="text-md font-semibold mb-4 text-green-400 flex items-center gap-2">
+                <Trophy size={16} />
+                Game Outcome Impact
+              </h3>
+              <div className="grid sm:grid-cols-2 gap-4">
+                {/* Win Value */}
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="text-sm font-medium text-slate-300">
+                      Win Value
+                    </label>
+                    <span className="text-lg font-bold text-green-500 bg-green-500/10 px-2 py-1 rounded">
+                      +{winMultiplier.toFixed(1)}x
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min="1.0"
+                    max="2.0"
+                    step="0.1"
+                    value={winMultiplier}
+                    onChange={(e) => setWinMultiplier(parseFloat(e.target.value))}
+                    className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-green-500"
+                  />
+                  <p className="text-xs text-slate-500 mt-1">Base reward for winning (always ≥ 1.0)</p>
+                </div>
+
+                {/* Loss Penalty */}
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="text-sm font-medium text-slate-300">
+                      Loss Penalty
+                    </label>
+                    <span className="text-lg font-bold text-red-500 bg-red-500/10 px-2 py-1 rounded">
+                      -{lossMultiplier.toFixed(1)}x
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min="1.0"
+                    max="2.0"
+                    step="0.1"
+                    value={lossMultiplier}
+                    onChange={(e) => setLossMultiplier(parseFloat(e.target.value))}
+                    className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-red-500"
+                  />
+                  <p className="text-xs text-slate-500 mt-1">Penalty for losing (always ≥ 1.0, applied as negative)</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Section 2: Margin of Victory Impact */}
+            <div className="mb-6 p-4 bg-slate-900/50 rounded-lg border border-slate-600">
+              <h3 className="text-md font-semibold mb-4 text-blue-400 flex items-center gap-2">
+                <ChevronUp size={16} />
+                Margin of Victory Impact
+              </h3>
+              <div className="grid sm:grid-cols-3 gap-4">
+                {/* 1-Score Games */}
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="text-sm font-medium text-slate-300">
+                      1-Score (≤8pts)
+                    </label>
+                    <span className="text-lg font-bold text-blue-400 bg-blue-400/10 px-2 py-1 rounded">
+                      {oneScoreMultiplier.toFixed(1)}x
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0.5"
+                    max="2.0"
+                    step="0.1"
+                    value={oneScoreMultiplier}
+                    onChange={(e) => setOneScoreMultiplier(parseFloat(e.target.value))}
+                    className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-400"
+                  />
+                  <p className="text-xs text-slate-500 mt-1">Close games</p>
+                </div>
+
+                {/* 2-Score Games */}
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="text-sm font-medium text-slate-300">
+                      2-Score (9-16pts)
+                    </label>
+                    <span className="text-lg font-bold text-blue-400 bg-blue-400/10 px-2 py-1 rounded">
+                      {twoScoreMultiplier.toFixed(1)}x
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0.5"
+                    max="2.0"
+                    step="0.1"
+                    value={twoScoreMultiplier}
+                    onChange={(e) => setTwoScoreMultiplier(parseFloat(e.target.value))}
+                    className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-400"
+                  />
+                  <p className="text-xs text-slate-500 mt-1">Moderate wins</p>
+                </div>
+
+                {/* 3+ Score Games */}
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="text-sm font-medium text-slate-300">
+                      3+ Score (&gt;16pts)
+                    </label>
+                    <span className="text-lg font-bold text-blue-400 bg-blue-400/10 px-2 py-1 rounded">
+                      {threeScoreMultiplier.toFixed(1)}x
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0.5"
+                    max="2.0"
+                    step="0.1"
+                    value={threeScoreMultiplier}
+                    onChange={(e) => setThreeScoreMultiplier(parseFloat(e.target.value))}
+                    className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-400"
+                  />
+                  <p className="text-xs text-slate-500 mt-1">Blowouts</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Section 3: Strength of Schedule Impact */}
+            <div className="mb-6 p-4 bg-slate-900/50 rounded-lg border border-slate-600">
+              <h3 className="text-md font-semibold mb-4 text-purple-400 flex items-center gap-2">
+                <ChevronDown size={16} />
+                Strength of Schedule Impact
+              </h3>
               <div>
-                <div className="flex justify-between items-center mb-3">
+                <div className="flex justify-between items-center mb-2">
                   <label className="text-sm font-medium text-slate-300">
-                    3+ Score Game Weight (&gt;16pts)
+                    Opponent Strength Weight
                   </label>
-                  <span className="text-lg font-bold text-orange-500">{sosMultiplier.toFixed(1)}x</span>
+                  <span className="text-lg font-bold text-purple-400 bg-purple-400/10 px-2 py-1 rounded">
+                    {sosMultiplier.toFixed(1)}x
+                  </span>
                 </div>
                 <input
                   type="range"
-                  min="0.5"
+                  min="0.0"
                   max="2.0"
                   step="0.1"
                   value={sosMultiplier}
                   onChange={(e) => setSosMultiplier(parseFloat(e.target.value))}
-                  className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-orange-500"
+                  className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-purple-400"
                 />
+                <p className="text-xs text-slate-500 mt-1">
+                  How much opponent quality matters (0 = only W/L matters, 2.0 = SoS heavily weighted)
+                </p>
               </div>
             </div>
 
-            <div className="mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-slate-700">
-              <p className="text-sm text-slate-400">
-                <strong>Formula:</strong> (W/L × Margin Multiplier) + ((Opponent Rank ÷ 100) × SoS Multiplier)
-              </p>
+            {/* Formula Explanation */}
+            <div className="mt-6 pt-6 border-t border-slate-700">
+              <h3 className="text-md font-semibold mb-3 text-orange-400">📐 Ranking Formula Explained</h3>
+              <div className="bg-slate-900/50 p-4 rounded-lg space-y-3">
+                <p className="text-sm text-slate-300 leading-relaxed">
+                  Each game contributes points to a team's overall rating using this formula:
+                </p>
+                <div className="bg-slate-950/50 p-3 rounded border border-slate-600">
+                  <code className="text-orange-400 text-sm">
+                    Game Value = (Outcome × Margin) + Opponent Strength
+                  </code>
+                </div>
+                <div className="text-sm text-slate-400 space-y-2">
+                  <p><strong className="text-slate-300">Outcome:</strong> Win Value (+) or Loss Penalty (-)</p>
+                  <p><strong className="text-slate-300">Margin:</strong> Multiplier based on point differential (1-score, 2-score, or 3+ score)</p>
+                  <p><strong className="text-slate-300">Opponent Strength:</strong> (Opponent Rating ÷ 100) × SoS Weight</p>
+                </div>
+                <div className="bg-blue-500/10 border border-blue-500/30 p-3 rounded mt-3">
+                  <p className="text-xs text-blue-300">
+                    <strong>Example:</strong> Beating a 75.0-rated team by 20 points with default settings:<br/>
+                    <code className="text-blue-200">(+1.0 × 1.5) + (75.0 ÷ 100 × 1.0) = 1.5 + 0.75 = 2.25 points</code>
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         )}
