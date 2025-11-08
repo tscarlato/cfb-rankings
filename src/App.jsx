@@ -450,7 +450,7 @@ const App = () => {
               <h3 className="text-md font-semibold mb-3 text-orange-400">📐 Ranking Formula Explained</h3>
               <div className="bg-slate-900/50 p-4 rounded-lg space-y-3">
                 <p className="text-sm text-slate-300 leading-relaxed">
-                  Each game contributes points to a team's overall rating using this formula:
+                  Each FBS win and all losses contribute points to a team's overall rating using this formula:
                 </p>
                 <div className="bg-slate-950/50 p-3 rounded border border-slate-600">
                   <code className="text-orange-400 text-sm">
