@@ -1,9 +1,7 @@
-# api_db.py
-# Minimal version that restores original functionality with database backend
-
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import List, Optional
 import uvicorn
@@ -15,16 +13,24 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Enable CORS
+# Enable CORS for frontend access
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:3000",
+        "http://localhost:8000",
+        "http://localhost:5173",  # Vite dev server
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:8000",
+        "http://127.0.0.1:5173",
+        "*"  # Allow all for development
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Pydantic models (same as original)
+# Pydantic models for API responses
 class GameResultResponse(BaseModel):
     opponent: str
     opponent_record: str
@@ -49,12 +55,12 @@ class RankingsResponse(BaseModel):
 
 class FormulaParams(BaseModel):
     win_loss_multiplier: float = 1.0
-    one_score_multiplier: float = 1.0
-    two_score_multiplier: float = 1.3
-    three_score_multiplier: float = 1.5
+    one_score_multiplier: float = 1.0      # Margin ≤ 8
+    two_score_multiplier: float = 1.3      # Margin 9-16
+    three_score_multiplier: float = 1.5    # Margin > 16
     strength_of_schedule_multiplier: float = 1.0
 
-# Cache for storing ranking system
+# Cache for storing ranking system (could use Redis in production)
 ranking_cache = {}
 
 def get_or_create_rankings(
@@ -62,11 +68,11 @@ def get_or_create_rankings(
     season_type: str = "regular",
     classification: str = "fbs",
     week: Optional[int] = None,
+    api_key: Optional[str] = None,
     formula_params: Optional[FormulaParams] = None
 ):
-    """Get rankings from cache or compute them from database."""
-    
-    # Create cache key
+    """Get rankings from cache or compute them."""
+    # Include formula params in cache key
     formula_key = ""
     if formula_params:
         formula_key = f"_{formula_params.win_loss_multiplier}_{formula_params.one_score_multiplier}_{formula_params.two_score_multiplier}_{formula_params.three_score_multiplier}_{formula_params.strength_of_schedule_multiplier}"
@@ -76,8 +82,8 @@ def get_or_create_rankings(
     if cache_key in ranking_cache:
         return ranking_cache[cache_key]
     
-    # Import database-backed ranking system
-    from cfb_ranking_system import DatabaseLoader, RankingSystem, RankingFormula
+    # Import here to avoid circular imports
+    from cfb_ranking_system import CFBDataAPI, RankingSystem, RankingFormula
     
     # Update formula if custom params provided
     if formula_params:
@@ -87,32 +93,31 @@ def get_or_create_rankings(
         RankingFormula.THREE_SCORE_MULTIPLIER = formula_params.three_score_multiplier
         RankingFormula.STRENGTH_OF_SCHEDULE_MULTIPLIER = formula_params.strength_of_schedule_multiplier
     
-    # Load from database instead of API
-    try:
-        db_loader = DatabaseLoader()
-        system = RankingSystem()
-        
-        system.load_games_from_database(
-            db_loader=db_loader,
-            year=year,
-            season_type=season_type,
-            classification=classification,
-            week=week
-        )
-        
-        # Check if any games were loaded
-        if len(system.teams) == 0:
-            raise ValueError(f"No games found in database for {year} {season_type} {classification}")
-        
-        system.calculate_rankings(iterations=20)
-        
-        # Cache the result
-        ranking_cache[cache_key] = system
-        return system
-        
-    except Exception as e:
-        print(f"Error loading from database: {e}")
-        raise
+    # Use provided key or default
+    if api_key is None:
+        api_key = "mBIqtiooiszQC3myFOJyvK4y8j5ZUzRr5JXRCjl0yjOvXIOFrdKLix4b+upMY2cw"
+    
+    # Initialize and compute rankings
+    api = CFBDataAPI(api_key=api_key)
+    system = RankingSystem()
+    
+    system.load_games_from_api(
+        api=api,
+        year=year,
+        season_type=season_type,
+        classification=classification,
+        week=week
+    )
+    
+    # Check if any games were loaded
+    if len(system.teams) == 0:
+        raise ValueError(f"No teams loaded. This could mean: (1) No games found for {year} {season_type} {classification}, (2) API key issue, or (3) API is down")
+    
+    system.calculate_rankings(iterations=20)
+    
+    # Cache the result
+    ranking_cache[cache_key] = system
+    return system
 
 def format_team_response(team, rank: int) -> TeamResponse:
     """Convert Team object to API response format."""
@@ -137,11 +142,6 @@ def format_team_response(team, rank: int) -> TeamResponse:
         games=games
     )
 
-@app.get("/")
-async def root():
-    """Serve the frontend HTML."""
-    return FileResponse('cfb-rankings.html')
-
 @app.get("/rankings", response_model=RankingsResponse)
 async def get_rankings(
     year: int = Query(2024, description="Season year"),
@@ -149,6 +149,7 @@ async def get_rankings(
     classification: str = Query("fbs", description="Division: fbs, fcs, ii, or iii"),
     week: Optional[int] = Query(None, description="Specific week number (1-15)"),
     top_n: Optional[int] = Query(None, description="Limit to top N teams"),
+    api_key: Optional[str] = Query(None, description="College Football Data API key"),
     # Formula parameters
     win_loss_multiplier: float = Query(1.0, description="Multiplier applied to base (+1 for win, -1 for loss)"),
     one_score_multiplier: float = Query(1.0, description="Multiplier for 1-score games (≤8 pts)"),
@@ -157,7 +158,7 @@ async def get_rankings(
     strength_of_schedule_multiplier: float = Query(1.0, description="Multiplier for strength of schedule impact")
 ):
     """
-    Get rankings - exactly like the original but loads from database.
+    Get rankings for all teams with customizable formula parameters.
     """
     try:
         formula_params = FormulaParams(
@@ -168,7 +169,7 @@ async def get_rankings(
             strength_of_schedule_multiplier=strength_of_schedule_multiplier
         )
         
-        system = get_or_create_rankings(year, season_type, classification, week, formula_params)
+        system = get_or_create_rankings(year, season_type, classification, week, api_key, formula_params)
         
         ranked_teams = system.get_rankings(sort=True)
         if top_n:
@@ -199,13 +200,16 @@ async def get_team(
     team_name: str,
     year: int = Query(2024, description="Season year"),
     season_type: str = Query("regular", description="Season type"),
-    classification: str = Query("fbs", description="Division")
+    classification: str = Query("fbs", description="Division"),
+    api_key: Optional[str] = Query(None, description="API key")
 ):
     """
     Get detailed information for a specific team.
+    
+    - **team_name**: Name of the team (case-sensitive)
     """
     try:
-        system = get_or_create_rankings(year, season_type, classification, None, None)
+        system = get_or_create_rankings(year, season_type, classification, None, api_key)
         
         if team_name not in system.teams:
             raise HTTPException(status_code=404, detail=f"Team '{team_name}' not found")
@@ -231,244 +235,11 @@ async def health_check():
     """Health check endpoint."""
     return {"status": "healthy"}
 
-
-# Add this to your api.py file
-# This creates an endpoint you can call to trigger the sync
-
-from threading import Thread
-import requests
-import time
-from sqlalchemy import text
-
-# Add this at the end of api.py, before if __name__ == "__main__"
-
-@app.post("/admin/populate-database")
-async def populate_database(
-    years: int = Query(5, description="Number of years to sync"),
-    background: bool = Query(True, description="Run in background")
-):
-    """
-    Populate database with historical data.
-    WARNING: This can take 5-10 minutes. Only run once!
-    
-    Usage:
-    POST /admin/populate-database?years=5&background=true
-    """
-    
-    def run_sync(years_to_sync: int):
-        """Run the sync in a separate thread"""
-        try:
-            print(f"Starting database population for {years_to_sync} years...")
-            
-            api_key = os.getenv("CFBD_API_KEY")
-            if not api_key:
-                print("ERROR: CFBD_API_KEY not set")
-                return
-            
-            # Get database connection
-            from sqlalchemy import create_engine
-            db_url = os.getenv("DATABASE_URL")
-            if not db_url:
-                print("ERROR: DATABASE_URL not set")
-                return
-            
-            engine = create_engine(db_url)
-            base_url = "https://api.collegefootballdata.com"
-            headers = {'Authorization': f'Bearer {api_key}'}
-            
-            # Sync teams
-            print("Syncing teams...")
-            try:
-                response = requests.get(f"{base_url}/teams/fbs", headers=headers, timeout=30)
-                response.raise_for_status()
-                teams_data = response.json()
-                
-                with engine.connect() as conn:
-                    added = updated = 0
-                    for team in teams_data:
-                        school = team.get('school')
-                        if not school:
-                            continue
-                        
-                        existing = conn.execute(
-                            text("SELECT id FROM teams WHERE school = :school"),
-                            {"school": school}
-                        ).fetchone()
-                        
-                        if existing:
-                            conn.execute(
-                                text("""
-                                    UPDATE teams SET
-                                        mascot = :mascot,
-                                        abbreviation = :abbreviation,
-                                        classification = :classification,
-                                        conference = :conference,
-                                        division = :division,
-                                        color = :color,
-                                        alt_color = :alt_color
-                                    WHERE school = :school
-                                """),
-                                {
-                                    "school": school,
-                                    "mascot": team.get('mascot'),
-                                    "abbreviation": team.get('abbreviation'),
-                                    "classification": team.get('classification', 'fbs'),
-                                    "conference": team.get('conference'),
-                                    "division": team.get('division'),
-                                    "color": team.get('color'),
-                                    "alt_color": team.get('alt_color')
-                                }
-                            )
-                            updated += 1
-                        else:
-                            conn.execute(
-                                text("""
-                                    INSERT INTO teams 
-                                    (school, mascot, abbreviation, classification, conference, 
-                                     division, color, alt_color)
-                                    VALUES 
-                                    (:school, :mascot, :abbreviation, :classification, :conference,
-                                     :division, :color, :alt_color)
-                                """),
-                                {
-                                    "school": school,
-                                    "mascot": team.get('mascot'),
-                                    "abbreviation": team.get('abbreviation'),
-                                    "classification": team.get('classification', 'fbs'),
-                                    "conference": team.get('conference'),
-                                    "division": team.get('division'),
-                                    "color": team.get('color'),
-                                    "alt_color": team.get('alt_color')
-                                }
-                            )
-                            added += 1
-                    
-                    conn.commit()
-                
-                print(f"Teams synced: {added} added, {updated} updated")
-            except Exception as e:
-                print(f"Error syncing teams: {e}")
-            
-            # Sync games for multiple years
-            from datetime import datetime
-            current_year = datetime.now().year
-            start_year = current_year - years_to_sync + 1
-            
-            total_games = 0
-            for year in range(start_year, current_year + 1):
-                for season_type in ['regular', 'postseason']:
-                    print(f"Syncing {year} {season_type}...")
-                    
-                    try:
-                        time.sleep(0.15)  # Rate limiting
-                        response = requests.get(
-                            f"{base_url}/games",
-                            headers=headers,
-                            params={'year': year, 'seasonType': season_type},
-                            timeout=30
-                        )
-                        response.raise_for_status()
-                        games_data = response.json()
-                        
-                        with engine.connect() as conn:
-                            added = updated = 0
-                            for game in games_data:
-                                game_id = game.get('id')
-                                home_team = game.get('homeTeam') or game.get('home_team')
-                                away_team = game.get('awayTeam') or game.get('away_team')
-                                
-                                if not game_id or not home_team or not away_team:
-                                    continue
-                                
-                                existing = conn.execute(
-                                    text("SELECT id FROM games WHERE id = :id"),
-                                    {"id": game_id}
-                                ).fetchone()
-                                
-                                game_values = {
-                                    "id": game_id,
-                                    "season": game.get('season', year),
-                                    "week": game.get('week'),
-                                    "season_type": game.get('seasonType', season_type),
-                                    "start_date": game.get('startDate'),
-                                    "completed": game.get('completed', False),
-                                    "home_team": home_team,
-                                    "away_team": away_team,
-                                    "home_points": game.get('homePoints'),
-                                    "away_points": game.get('awayPoints'),
-                                    "venue": game.get('venue'),
-                                    "neutral_site": game.get('neutralSite', False),
-                                    "conference_game": game.get('conferenceGame', False)
-                                }
-                                
-                                if existing:
-                                    conn.execute(
-                                        text("""
-                                            UPDATE games SET
-                                                season = :season, week = :week, season_type = :season_type,
-                                                start_date = :start_date, completed = :completed,
-                                                home_team = :home_team, away_team = :away_team,
-                                                home_points = :home_points, away_points = :away_points,
-                                                venue = :venue, neutral_site = :neutral_site,
-                                                conference_game = :conference_game
-                                            WHERE id = :id
-                                        """),
-                                        game_values
-                                    )
-                                    updated += 1
-                                else:
-                                    conn.execute(
-                                        text("""
-                                            INSERT INTO games 
-                                            (id, season, week, season_type, start_date, completed,
-                                             home_team, away_team, home_points, away_points,
-                                             venue, neutral_site, conference_game)
-                                            VALUES 
-                                            (:id, :season, :week, :season_type, :start_date, :completed,
-                                             :home_team, :away_team, :home_points, :away_points,
-                                             :venue, :neutral_site, :conference_game)
-                                        """),
-                                        game_values
-                                    )
-                                    added += 1
-                            
-                            conn.commit()
-                        
-                        games_count = added + updated
-                        total_games += games_count
-                        print(f"{year} {season_type}: {games_count} games")
-                        
-                    except Exception as e:
-                        print(f"Error syncing {year} {season_type}: {e}")
-            
-            print(f"Sync complete! Total: {total_games} games")
-            
-        except Exception as e:
-            print(f"Fatal error during sync: {e}")
-            import traceback
-            traceback.print_exc()
-    
-    if background:
-        # Run in background thread
-        thread = Thread(target=run_sync, args=(years,))
-        thread.daemon = True
-        thread.start()
-        
-        return {
-            "status": "started",
-            "message": f"Database population started in background for {years} years. Check Railway logs for progress.",
-            "estimated_time": "5-10 minutes",
-            "note": "This endpoint returns immediately. The sync runs in the background."
-        }
-    else:
-        # Run synchronously (will timeout on Railway after 30s, but sync continues)
-        run_sync(years)
-        return {
-            "status": "complete",
-            "message": "Database population complete"
-        }
-
+# Serve React app (MUST BE LAST - after all API routes)
+if os.path.exists("dist"):
+    app.mount("/", StaticFiles(directory="dist", html=True), name="static")
 
 if __name__ == "__main__":
+    import os
     port = int(os.environ.get("PORT", 8000))
     uvicorn.run(app, host="0.0.0.0", port=port)

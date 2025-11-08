@@ -1,12 +1,8 @@
-# cfb_ranking_system_db.py
-# Modified version that loads from database instead of API
-
+import requests
 from typing import Optional, List
-from sqlalchemy import create_engine, text
-from sqlalchemy.orm import Session
-import os
 
-# ==================== ORIGINAL DATA MODELS (unchanged) ====================
+
+# ==================== DATA MODELS ====================
 
 class GameResult:
     """Represents a game from one team's perspective."""
@@ -51,20 +47,34 @@ class Team:
         return f"{self.name} ({wins}-{losses}, rank={self.ranking:.2f})"
 
 
-# ==================== RANKING FORMULA (unchanged) ====================
+# ==================== RANKING FORMULA ====================
 
 class RankingFormula:
     """Encapsulates the ranking calculation logic with configurable parameters."""
     
+    # Class variables that can be modified to customize the formula
     WIN_LOSS_MULTIPLIER = 1.0
-    ONE_SCORE_MULTIPLIER = 1.0
-    TWO_SCORE_MULTIPLIER = 1.3
-    THREE_SCORE_MULTIPLIER = 1.5
+    ONE_SCORE_MULTIPLIER = 1.0      # Margin ≤ 8 points
+    TWO_SCORE_MULTIPLIER = 1.3      # Margin 9-16 points
+    THREE_SCORE_MULTIPLIER = 1.5    # Margin > 16 points
     STRENGTH_OF_SCHEDULE_MULTIPLIER = 1.0
     
     @classmethod
     def calculate(cls, game_result: GameResult, opponent_rank: float) -> float:
-        """Calculate ranking value for a single game."""
+        """
+        Calculate ranking value for a single game.
+        
+        Formula: (Win/Loss × Margin Multiplier) + ((Opponent Rank ÷ 100) × SoS Multiplier)
+        
+        Rules:
+        - Non-FBS wins: 0 points (no credit for beating lower divisions)
+        - Win/Loss: +1 or -1 (multiplied by WIN_LOSS_MULTIPLIER)
+        - Margin Multipliers:
+          * 1-score game (≤8 pts): ONE_SCORE_MULTIPLIER
+          * 2-score game (9-16 pts): TWO_SCORE_MULTIPLIER  
+          * 3+ score game (>16 pts): THREE_SCORE_MULTIPLIER
+        - Opponent strength: (rank ÷ 100) × STRENGTH_OF_SCHEDULE_MULTIPLIER
+        """
         # Non-FBS wins don't count
         if game_result.won and not game_result.opponent_fbs:
             return 0.0
@@ -77,7 +87,7 @@ class RankingFormula:
     
     @classmethod
     def _get_margin_multiplier(cls, margin: int) -> float:
-        """Get margin multiplier based on point differential."""
+        """Get margin multiplier based on point differential (score categories)."""
         abs_margin = abs(margin)
         if abs_margin <= 8:
             return cls.ONE_SCORE_MULTIPLIER
@@ -87,84 +97,47 @@ class RankingFormula:
             return cls.THREE_SCORE_MULTIPLIER
 
 
-# ==================== DATABASE LOADER (NEW - replaces API) ====================
+# ==================== API CLIENT ====================
 
-class DatabaseLoader:
-    """Load games from database instead of API"""
+class CFBDataAPI:
+    """College Football Data API client."""
     
-    def __init__(self, db_url: Optional[str] = None):
-        if db_url is None:
-            db_url = os.getenv("DATABASE_URL")
-            if not db_url:
-                raise ValueError("DATABASE_URL not set")
-        
-        self.engine = create_engine(db_url)
+    BASE_URL = "https://api.collegefootballdata.com"
+    
+    def __init__(self, api_key: Optional[str] = None):
+        self.headers = {}
+        if api_key:
+            self.headers['Authorization'] = f'Bearer {api_key}'
     
     def get_games(self, year: int, season_type: str = "regular", 
-                  classification: str = "fbs", week: Optional[int] = None) -> List[dict]:
-        """Fetch games from database."""
-        
-        query = """
-            SELECT 
-                g.id,
-                g.season,
-                g.week,
-                g.season_type,
-                g.home_team,
-                g.away_team,
-                g.home_points,
-                g.away_points,
-                g.completed,
-                ht.classification as home_classification,
-                at.classification as away_classification
-            FROM games g
-            LEFT JOIN teams ht ON g.home_team = ht.school
-            LEFT JOIN teams at ON g.away_team = at.school
-            WHERE g.season = :year
-                AND g.season_type = :season_type
-                AND g.completed = true
-                AND g.home_points IS NOT NULL
-                AND g.away_points IS NOT NULL
-        """
-        
+                  classification: str = "fbs", debug: bool = False) -> List[dict]:
+        """Fetch games from the API."""
         params = {
-            "year": year,
-            "season_type": season_type
+            'year': year,
+            'seasonType': season_type,
+            'classification': classification
         }
         
-        # Include games up to the specified week
-        if week is not None:
-            query += " AND g.week <= :week"
-            params["week"] = week
+        if debug:
+            print(f"API Request: {self.BASE_URL}/games with {params}")
         
-        query += " ORDER BY g.week, g.start_date"
-        
-        with self.engine.connect() as conn:
-            result = conn.execute(text(query), params)
-            
-            games = []
-            for row in result:
-                games.append({
-                    'id': row[0],
-                    'season': row[1],
-                    'week': row[2],
-                    'seasonType': row[3],
-                    'homeTeam': row[4],
-                    'awayTeam': row[5],
-                    'homePoints': row[6],
-                    'awayPoints': row[7],
-                    'completed': row[8],
-                    'homeClassification': row[9] or 'fbs',
-                    'awayClassification': row[10] or 'fbs'
-                })
-            
-            return games
+        try:
+            response = requests.get(
+                f"{self.BASE_URL}/games",
+                headers=self.headers,
+                params=params
+            )
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            print(f"API Error: {e}")
+            return []
 
 
-# ==================== RANKING SYSTEM (modified to use database) ====================
+# ==================== RANKING SYSTEM ====================
 
 class RankingSystem:
-    """Main ranking system - now loads from database"""
+    """Main ranking system that orchestrates teams and calculations."""
     
     def __init__(self):
         self.teams: dict = {}
@@ -182,6 +155,7 @@ class RankingSystem:
         home_team = self.add_team(home_name)
         away_team = self.add_team(away_name)
         
+        # Track FBS teams
         if home_fbs:
             self.fbs_teams.add(home_name)
         if away_fbs:
@@ -189,6 +163,7 @@ class RankingSystem:
         
         margin = home_score - away_score
         
+        # Add from home team perspective
         home_team.add_game(GameResult(
             opponent=away_team,
             won=margin > 0,
@@ -197,6 +172,7 @@ class RankingSystem:
             week=week
         ))
         
+        # Add from away team perspective
         away_team.add_game(GameResult(
             opponent=home_team,
             won=margin < 0,
@@ -205,26 +181,43 @@ class RankingSystem:
             week=week
         ))
     
-    def load_games_from_database(self, db_loader: DatabaseLoader, year: int, 
-                                 season_type: str = "regular", 
-                                 classification: str = "fbs",
-                                 week: Optional[int] = None):
-        """Load games from database (replaces load_games_from_api)"""
-        print(f"Loading {classification.upper()} games from database for {year}, week {week if week else 'all'}...")
-        
-        games = db_loader.get_games(year, season_type, classification, week)
+    def load_games_from_api(self, api: CFBDataAPI, year: int, 
+                           season_type: str = "regular", 
+                           classification: str = "fbs",
+                           conference: Optional[str] = None,
+                           week: Optional[int] = None,
+                           debug: bool = False):
+        """Load games from College Football Data API."""
+        print(f"Fetching {classification.upper()} games for {year}, week {week if week else 'all'}...")
+        games = api.get_games(year, season_type, classification, debug)
         
         games_added = 0
         for game in games:
+            # Skip incomplete games
+            if game.get('homePoints') is None or game.get('awayPoints') is None:
+                continue
+            
             home_team = game.get('homeTeam')
             away_team = game.get('awayTeam')
             
             if not home_team or not away_team:
                 continue
             
+            # Filter by week if specified (include all games UP TO that week)
+            game_week = game.get('week')
+            if week and game_week and game_week > week:
+                continue
+            
+            # Optional conference filter
+            if conference:
+                if conference not in [game.get('homeConference'), game.get('awayConference')]:
+                    continue
+            
+            # Determine FBS status
             home_fbs = game.get('homeClassification', 'fbs').lower() == 'fbs'
             away_fbs = game.get('awayClassification', 'fbs').lower() == 'fbs'
             
+            # Get week number
             week_num = game.get('week')
             
             self.add_game(
@@ -239,32 +232,44 @@ class RankingSystem:
     
     def calculate_rankings(self, iterations: int = 20, convergence_threshold: float = 0.01):
         """Iteratively calculate rankings until convergence."""
+        # Initialize
         for team in self.teams.values():
             team.ranking = 50.0
+        
+        print(f"Calculating rankings ({iterations} iterations max)...")
         
         for iteration in range(iterations):
             old_rankings = {name: team.ranking for name, team in self.teams.items()}
             
+            # Update game values based on current opponent rankings
             self._update_game_values()
             
+            # Update team rankings
             for team in self.teams.values():
                 team.calculate_ranking()
             
+            # Check convergence
             max_change = max(
                 abs(team.ranking - old_rankings[name])
                 for name, team in self.teams.items()
             )
             
             if max_change < convergence_threshold:
+                print(f"Converged after {iteration + 1} iterations")
                 break
+        else:
+            print(f"Completed {iterations} iterations")
         
+        # Final update to match final rankings
         self._update_game_values()
     
     def _update_game_values(self):
         """Recalculate all game values based on current rankings."""
         for team in self.teams.values():
             for game in team.game_results:
+                # Update opponent FBS status
                 game.opponent_fbs = game.opponent.name in self.fbs_teams
+                # Calculate value using formula
                 game.ranking_value = RankingFormula.calculate(game, game.opponent.ranking)
     
     def get_rankings(self, sort: bool = True) -> List[Team]:
@@ -307,3 +312,31 @@ class RankingSystem:
             opp_wins, opp_losses = game.opponent.get_record()
             print(f"  {result} vs {game.opponent.name:<20} ({opp_wins}-{opp_losses}, rank {game.opponent.ranking:>6.2f}) "
                   f"Margin: {game.margin:>+4} Value: {game.ranking_value:>6.2f}")
+
+
+# ==================== EXAMPLE USAGE ====================
+
+if __name__ == "__main__":
+    # Setup
+    API_KEY = "mBIqtiooiszQC3myFOJyvK4y8j5ZUzRr5JXRCjl0yjOvXIOFrdKLix4b+upMY2cw"
+    api = CFBDataAPI(api_key=API_KEY)
+    system = RankingSystem()
+    
+    # Load games
+    system.load_games_from_api(
+        api=api,
+        year=2025,
+        season_type="regular",
+        classification="fbs"
+    )
+    
+    # Calculate rankings
+    system.calculate_rankings(iterations=20)
+    
+    # Display results
+    system.print_rankings(top_n=25)
+    
+    # Show top 3 teams
+    print("\nDetailed breakdown for top 3 teams:")
+    for team in system.get_rankings()[:3]:
+        system.print_team_details(team.name)
