@@ -265,7 +265,7 @@ const App = () => {
               <div>
                 <div className="flex justify-between items-center mb-3">
                   <label className="text-sm font-medium text-slate-300">
-                    3+ Score Game Weight (>16pts)
+                    3+ Score Game Weight (&gt;16pts)
                   </label>
                   <span className="text-lg font-bold text-orange-500">{sosMultiplier.toFixed(1)}x</span>
                 </div>
