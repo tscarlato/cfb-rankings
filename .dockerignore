@@ -1,0 +1,14 @@
+node_modules
+.venv
+venv
+dist
+.git
+.gitignore
+*.md
+.DS_Store
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.log
