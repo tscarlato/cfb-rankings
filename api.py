@@ -64,7 +64,7 @@ class FormulaParams(BaseModel):
 ranking_cache = {}
 
 def get_or_create_rankings(
-    year: int = 2024,
+    year: int = 2025,
     season_type: str = "regular",
     classification: str = "fbs",
     week: Optional[int] = None,
