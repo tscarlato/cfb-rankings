@@ -131,15 +131,30 @@ const App = () => {
   // Filter teams by search
   const filteredTeams = useMemo(() => {
     if (!searchQuery) return teams;
-    return teams.filter(team => 
+    return teams.filter(team =>
       team.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
   }, [teams, searchQuery]);
 
-  // Sort teams by ranking
+  // Sort teams by ranking and assign ranks based on full list
   const rankedTeams = useMemo(() => {
-    return [...filteredTeams].sort((a, b) => b.ranking - a.ranking);
-  }, [filteredTeams]);
+    // First, sort all teams to establish true ranks
+    const sortedAllTeams = [...teams].sort((a, b) => b.ranking - a.ranking);
+
+    // Create a map of team name to their true rank
+    const rankMap = new Map();
+    sortedAllTeams.forEach((team, index) => {
+      rankMap.set(team.name, index + 1);
+    });
+
+    // Sort filtered teams and attach their true rank
+    return [...filteredTeams]
+      .sort((a, b) => b.ranking - a.ranking)
+      .map(team => ({
+        ...team,
+        trueRank: rankMap.get(team.name)
+      }));
+  }, [teams, filteredTeams]);
 
   const getRankColor = (rank) => {
     if (rank <= 5) return 'from-orange-500 to-red-600';
@@ -350,7 +365,7 @@ const App = () => {
             {/* Team Rows */}
             <div className="max-h-[calc(100vh-400px)] overflow-y-auto">
               {rankedTeams.map((team, index) => {
-                const rank = index + 1;
+                const rank = team.trueRank;
                 const logoUrl = getTeamLogo(team.name);
                 const isExpanded = expandedTeam === team.name;
 
