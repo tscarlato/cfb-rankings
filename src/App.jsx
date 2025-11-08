@@ -59,12 +59,37 @@ const App = () => {
       // Independent
       'Notre Dame': '87', 'UConn': '41', 'UMass': '113', 'Army': '349',
       
-      // Group of 5
-      'Memphis': '235', 'Tulane': '2655', 'Navy': '2426', 'Boise State': '68',
-      'San Diego State': '21', 'Fresno State': '278', 'Air Force': '2005',
+      // Group of 5 - AAC
+      'Memphis': '235', 'Tulane': '2655', 'Navy': '2426', 'South Florida': '58',
+      'East Carolina': '151', 'Temple': '218', 'UAB': '5', 'North Texas': '249',
+      'UTSA': '2636', 'Charlotte': '2429', 'Tulsa': '202', 'Florida Atlantic': '2226',
+      'Rice': '242',
+
+      // Group of 5 - Mountain West
+      'Boise State': '68', 'San Diego State': '21', 'Fresno State': '278',
+      'Air Force': '2005', 'Colorado State': '36', 'Wyoming': '2849',
+      'New Mexico': '167', 'Nevada': '2440', 'UNLV': '2439', 'San Jose State': '23',
+      'Utah State': '328', 'Hawaii': '62',
+
+      // Group of 5 - Sun Belt
       'App State': '2026', 'Appalachian State': '2026', 'Coastal Carolina': '324',
       'James Madison': '256', 'Marshall': '276', 'Georgia Southern': '290',
-      'Liberty': '2335', 'Western Kentucky': '98', 'Toledo': '2649'
+      'Louisiana': '309', 'Louisiana Lafayette': '309', 'Troy': '2653',
+      'Arkansas State': '2032', 'South Alabama': '6', 'Georgia State': '2247',
+      'Old Dominion': '295', 'Southern Miss': '2572', 'Southern Mississippi': '2572',
+      'Texas State': '326', 'ULM': '2433',
+
+      // Group of 5 - MAC
+      'Toledo': '2649', 'Miami (OH)': '193', 'Miami OH': '193', 'Ohio': '195',
+      'Bowling Green': '189', 'Northern Illinois': '2459', 'Ball State': '2050',
+      'Western Michigan': '2711', 'Central Michigan': '2117', 'Eastern Michigan': '2199',
+      'Buffalo': '2084', 'Kent State': '2309', 'Akron': '2006',
+
+      // Group of 5 - CUSA
+      'Western Kentucky': '98', 'Liberty': '2335', 'Middle Tennessee': '2393',
+      'Jacksonville State': '55', 'Louisiana Tech': '2348', 'New Mexico State': '166',
+      'Sam Houston State': '2534', 'Sam Houston': '2534', 'UTEP': '2638',
+      'Florida International': '2229', 'FIU': '2229', 'Kennesaw State': '338'
     };
     
     const teamId = teamLogos[teamName];
@@ -345,19 +370,19 @@ const App = () => {
 
                       {/* Team */}
                       <div className="col-span-6 sm:col-span-5 flex items-center gap-2 sm:gap-3 min-w-0">
-                        <div className="w-8 h-8 sm:w-10 sm:h-10 flex-shrink-0 bg-slate-700 rounded-lg flex items-center justify-center overflow-hidden">
+                        <div className="w-8 h-8 sm:w-10 sm:h-10 flex-shrink-0 bg-slate-100 rounded-lg flex items-center justify-center overflow-hidden p-1">
                           {logoUrl ? (
-                            <img 
-                              src={logoUrl} 
+                            <img
+                              src={logoUrl}
                               alt={team.name}
                               className="w-full h-full object-contain"
                               onError={(e) => {
-                                e.target.style.display = 'none';
+                                e.target.parentElement.innerHTML = `<span class="text-xs font-bold text-slate-600">${team.name.substring(0, 3).toUpperCase()}</span>`;
                               }}
                             />
                           ) : (
-                            <span className="text-xs font-bold text-slate-400">
-                              {team.name.substring(0, 3)}
+                            <span className="text-xs font-bold text-slate-600">
+                              {team.name.substring(0, 3).toUpperCase()}
                             </span>
                           )}
                         </div>
@@ -417,16 +442,22 @@ const App = () => {
                                   <span className={`text-xs font-bold px-2 py-1 rounded ${game.won ? 'bg-green-600' : 'bg-red-600'} text-white flex-shrink-0`}>
                                     {game.won ? 'W' : 'L'}
                                   </span>
-                                  {oppLogoUrl && (
-                                    <div className="w-6 h-6 sm:w-8 sm:h-8 flex-shrink-0">
-                                      <img 
-                                        src={oppLogoUrl} 
+                                  <div className="w-6 h-6 sm:w-8 sm:h-8 flex-shrink-0 bg-slate-100 rounded flex items-center justify-center p-0.5">
+                                    {oppLogoUrl ? (
+                                      <img
+                                        src={oppLogoUrl}
                                         alt={game.opponent}
                                         className="w-full h-full object-contain"
-                                        onError={(e) => e.target.style.display = 'none'}
+                                        onError={(e) => {
+                                          e.target.parentElement.innerHTML = `<span class="text-[0.5rem] font-bold text-slate-600">${game.opponent.substring(0, 2).toUpperCase()}</span>`;
+                                        }}
                                       />
-                                    </div>
-                                  )}
+                                    ) : (
+                                      <span className="text-[0.5rem] font-bold text-slate-600">
+                                        {game.opponent.substring(0, 2).toUpperCase()}
+                                      </span>
+                                    )}
+                                  </div>
                                   <div className="min-w-0 flex-1">
                                     <div className="text-sm sm:text-base font-semibold text-slate-200 truncate">
                                       {game.opponent}
