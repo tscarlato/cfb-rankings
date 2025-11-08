@@ -5,7 +5,7 @@ const App = () => {
   const [scoreMultiplier, setScoreMultiplier] = useState(1.3);
   const [sosMultiplier, setSosMultiplier] = useState(1.0);
   const [showControls, setShowControls] = useState(false);
-  const [selectedYear, setSelectedYear] = useState(2024);
+  const [selectedYear, setSelectedYear] = useState(2025);
   const [selectedWeek, setSelectedWeek] = useState('');
   const [selectedSeason, setSelectedSeason] = useState('regular');
   const [teams, setTeams] = useState([]);
