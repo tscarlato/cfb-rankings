@@ -104,6 +104,77 @@ const App = () => {
     return teamId ? `https://a.espncdn.com/i/teamlogos/ncaa/500/${teamId}.png` : null;
   };
 
+  // Get team conference
+  const getTeamConference = (teamName) => {
+    const conferences = {
+      // SEC
+      'Alabama': 'SEC', 'Georgia': 'SEC', 'LSU': 'SEC', 'Florida': 'SEC',
+      'Tennessee': 'SEC', 'Texas': 'SEC', 'Texas A&M': 'SEC', 'Auburn': 'SEC',
+      'Ole Miss': 'SEC', 'Mississippi State': 'SEC', 'Arkansas': 'SEC',
+      'Kentucky': 'SEC', 'South Carolina': 'SEC', 'Missouri': 'SEC',
+      'Vanderbilt': 'SEC', 'Oklahoma': 'SEC',
+
+      // Big Ten
+      'Ohio State': 'Big Ten', 'Michigan': 'Big Ten', 'Penn State': 'Big Ten', 'USC': 'Big Ten',
+      'Oregon': 'Big Ten', 'Washington': 'Big Ten', 'UCLA': 'Big Ten', 'Michigan State': 'Big Ten',
+      'Iowa': 'Big Ten', 'Wisconsin': 'Big Ten', 'Nebraska': 'Big Ten', 'Minnesota': 'Big Ten',
+      'Indiana': 'Big Ten', 'Purdue': 'Big Ten', 'Maryland': 'Big Ten', 'Rutgers': 'Big Ten',
+      'Northwestern': 'Big Ten', 'Illinois': 'Big Ten',
+
+      // ACC
+      'Clemson': 'ACC', 'Florida State': 'ACC', 'Miami': 'ACC',
+      'North Carolina': 'ACC', 'NC State': 'ACC', 'Louisville': 'ACC',
+      'Duke': 'ACC', 'Virginia Tech': 'ACC', 'Virginia': 'ACC',
+      'Georgia Tech': 'ACC', 'Boston College': 'ACC', 'Syracuse': 'ACC',
+      'Wake Forest': 'ACC', 'Pittsburgh': 'ACC', 'Stanford': 'ACC',
+      'California': 'ACC', 'SMU': 'ACC',
+
+      // Big 12
+      'Kansas State': 'Big 12', 'TCU': 'Big 12', 'Baylor': 'Big 12', 'Texas Tech': 'Big 12',
+      'Oklahoma State': 'Big 12', 'West Virginia': 'Big 12', 'Iowa State': 'Big 12',
+      'Kansas': 'Big 12', 'BYU': 'Big 12', 'Utah': 'Big 12', 'Colorado': 'Big 12',
+      'Arizona': 'Big 12', 'Arizona State': 'Big 12', 'Cincinnati': 'Big 12',
+      'Houston': 'Big 12', 'UCF': 'Big 12',
+
+      // Independent
+      'Notre Dame': 'Independent', 'UConn': 'Independent', 'UMass': 'Independent', 'Army': 'Independent',
+
+      // AAC (American)
+      'Memphis': 'AAC', 'Tulane': 'AAC', 'Navy': 'AAC', 'South Florida': 'AAC',
+      'East Carolina': 'AAC', 'Temple': 'AAC', 'UAB': 'AAC', 'North Texas': 'AAC',
+      'UTSA': 'AAC', 'Charlotte': 'AAC', 'Tulsa': 'AAC', 'Florida Atlantic': 'AAC',
+      'Rice': 'AAC',
+
+      // Mountain West
+      'Boise State': 'Mountain West', 'San Diego State': 'Mountain West', 'Fresno State': 'Mountain West',
+      'Air Force': 'Mountain West', 'Colorado State': 'Mountain West', 'Wyoming': 'Mountain West',
+      'New Mexico': 'Mountain West', 'Nevada': 'Mountain West', 'UNLV': 'Mountain West',
+      'San Jose State': 'Mountain West', 'Utah State': 'Mountain West', 'Hawaii': 'Mountain West',
+
+      // Sun Belt
+      'App State': 'Sun Belt', 'Appalachian State': 'Sun Belt', 'Coastal Carolina': 'Sun Belt',
+      'James Madison': 'Sun Belt', 'Marshall': 'Sun Belt', 'Georgia Southern': 'Sun Belt',
+      'Louisiana': 'Sun Belt', 'Louisiana Lafayette': 'Sun Belt', 'Troy': 'Sun Belt',
+      'Arkansas State': 'Sun Belt', 'South Alabama': 'Sun Belt', 'Georgia State': 'Sun Belt',
+      'Old Dominion': 'Sun Belt', 'Southern Miss': 'Sun Belt', 'Southern Mississippi': 'Sun Belt',
+      'Texas State': 'Sun Belt', 'ULM': 'Sun Belt',
+
+      // MAC
+      'Toledo': 'MAC', 'Miami (OH)': 'MAC', 'Miami OH': 'MAC', 'Ohio': 'MAC',
+      'Bowling Green': 'MAC', 'Northern Illinois': 'MAC', 'Ball State': 'MAC',
+      'Western Michigan': 'MAC', 'Central Michigan': 'MAC', 'Eastern Michigan': 'MAC',
+      'Buffalo': 'MAC', 'Kent State': 'MAC', 'Akron': 'MAC',
+
+      // CUSA
+      'Western Kentucky': 'CUSA', 'Liberty': 'CUSA', 'Middle Tennessee': 'CUSA',
+      'Jacksonville State': 'CUSA', 'Louisiana Tech': 'CUSA', 'New Mexico State': 'CUSA',
+      'Sam Houston State': 'CUSA', 'Sam Houston': 'CUSA', 'UTEP': 'CUSA',
+      'Florida International': 'CUSA', 'FIU': 'CUSA', 'Kennesaw State': 'CUSA'
+    };
+
+    return conferences[teamName] || 'Other';
+  };
+
   // Fetch rankings from API
   const fetchRankings = async () => {
     setLoading(true);
@@ -172,12 +243,15 @@ const App = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, [lastScrollY]);
 
-  // Filter teams by search
+  // Filter teams by search (supports team name or conference)
   const filteredTeams = useMemo(() => {
     if (!searchQuery) return teams;
-    return teams.filter(team =>
-      team.name.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const query = searchQuery.toLowerCase();
+    return teams.filter(team => {
+      const teamName = team.name.toLowerCase();
+      const conference = getTeamConference(team.name).toLowerCase();
+      return teamName.includes(query) || conference.includes(query);
+    });
   }, [teams, searchQuery]);
 
   // Sort teams by ranking and assign ranks based on full list
@@ -307,7 +381,7 @@ const App = () => {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
               <input
                 type="text"
-                placeholder="Find your team..."
+                placeholder="Search by team or conference..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full bg-slate-800 text-white rounded-lg border border-slate-600 pl-10 pr-4 py-2 outline-none focus:border-orange-500 transition-colors"
