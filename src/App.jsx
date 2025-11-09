@@ -246,11 +246,24 @@ const App = () => {
   // Filter teams by search (supports team name or conference)
   const filteredTeams = useMemo(() => {
     if (!searchQuery) return teams;
-    const query = searchQuery.toLowerCase();
+    const query = searchQuery.toLowerCase().trim();
+
+    // Map common conference aliases to official names
+    const conferenceAliases = {
+      'big 10': 'big ten',
+      'b10': 'big ten',
+      'b12': 'big 12',
+      'big twelve': 'big 12',
+      'ind': 'independent'
+    };
+
+    // Check if query is a conference alias
+    const normalizedQuery = conferenceAliases[query] || query;
+
     return teams.filter(team => {
       const teamName = team.name.toLowerCase();
       const conference = getTeamConference(team.name).toLowerCase();
-      return teamName.includes(query) || conference.includes(query);
+      return teamName.includes(normalizedQuery) || conference.includes(normalizedQuery);
     });
   }, [teams, searchQuery]);
 
@@ -273,6 +286,30 @@ const App = () => {
         trueRank: rankMap.get(team.name)
       }));
   }, [teams, filteredTeams]);
+
+  // Calculate conference stats when searching by conference
+  const conferenceStats = useMemo(() => {
+    if (!searchQuery || rankedTeams.length === 0) return null;
+
+    // Get unique conferences in the filtered results
+    const conferences = new Set(rankedTeams.map(team => getTeamConference(team.name)));
+
+    // Only show stats if all teams are from the same conference
+    if (conferences.size === 1) {
+      const conferenceName = Array.from(conferences)[0];
+      const totalRating = rankedTeams.reduce((sum, team) => sum + team.ranking, 0);
+      const avgRating = totalRating / rankedTeams.length;
+
+      return {
+        name: conferenceName,
+        teamCount: rankedTeams.length,
+        totalRating: totalRating.toFixed(2),
+        avgRating: avgRating.toFixed(2)
+      };
+    }
+
+    return null;
+  }, [rankedTeams, searchQuery]);
 
   const getRankColor = (rank) => {
     if (rank <= 5) return 'from-orange-500 to-red-600';
@@ -604,6 +641,32 @@ const App = () => {
             >
               Try Again
             </button>
+          </div>
+        )}
+
+        {/* Conference Stats (shown when searching by conference) */}
+        {conferenceStats && (
+          <div className="mb-6 bg-gradient-to-r from-orange-500/20 to-red-500/20 backdrop-blur-sm border border-orange-500/30 rounded-xl p-4 sm:p-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <h3 className="text-xl sm:text-2xl font-bold text-orange-400 mb-1">
+                  {conferenceStats.name}
+                </h3>
+                <p className="text-slate-300 text-sm">
+                  {conferenceStats.teamCount} team{conferenceStats.teamCount !== 1 ? 's' : ''} shown
+                </p>
+              </div>
+              <div className="flex gap-4 sm:gap-6">
+                <div className="text-center">
+                  <div className="text-xs text-slate-400 mb-1">Total Rating</div>
+                  <div className="text-2xl font-bold text-orange-400">{conferenceStats.totalRating}</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-xs text-slate-400 mb-1">Avg Rating</div>
+                  <div className="text-2xl font-bold text-orange-400">{conferenceStats.avgRating}</div>
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
