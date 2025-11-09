@@ -19,6 +19,8 @@ const App = () => {
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedTeam, setExpandedTeam] = useState(null);
+  const [headerVisible, setHeaderVisible] = useState(true);
+  const [lastScrollY, setLastScrollY] = useState(0);
 
   // Generate year options from 1980 to current year
   const currentYear = new Date().getFullYear();
@@ -134,6 +136,27 @@ const App = () => {
     fetchRankings();
   }, [selectedYear, selectedWeek, selectedSeason, winMultiplier, lossMultiplier, oneScoreMultiplier, twoScoreMultiplier, threeScoreMultiplier, sosMultiplier]);
 
+  // Handle scroll to hide/show header
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+
+      // Show header when scrolling up or at top
+      if (currentScrollY < lastScrollY || currentScrollY < 10) {
+        setHeaderVisible(true);
+      }
+      // Hide header when scrolling down (after scrolling past 100px)
+      else if (currentScrollY > 100 && currentScrollY > lastScrollY) {
+        setHeaderVisible(false);
+      }
+
+      setLastScrollY(currentScrollY);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [lastScrollY]);
+
   // Filter teams by search
   const filteredTeams = useMemo(() => {
     if (!searchQuery) return teams;
@@ -187,7 +210,7 @@ const App = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white">
       {/* Header */}
-      <div className="border-b border-slate-700 bg-slate-900/50 backdrop-blur-sm sticky top-0 z-10">
+      <div className={`border-b border-slate-700 bg-slate-900/50 backdrop-blur-sm sticky top-0 z-10 transition-transform duration-300 ${headerVisible ? 'translate-y-0' : '-translate-y-full'}`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
           <div className="flex flex-col gap-4">
             {/* Title Row */}
