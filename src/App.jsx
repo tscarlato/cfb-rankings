@@ -131,6 +131,21 @@ const App = () => {
     }
   };
 
+  // Clear cache and fetch fresh data
+  const clearCacheAndRefresh = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      // Call clear-cache endpoint
+      await fetch('/clear-cache', { method: 'POST' });
+      // Then fetch fresh rankings
+      await fetchRankings();
+    } catch (err) {
+      setError(err.message);
+      setLoading(false);
+    }
+  };
+
   // Fetch on mount and when parameters change
   useEffect(() => {
     fetchRankings();
@@ -228,12 +243,13 @@ const App = () => {
                   </p>
                 </div>
               </div>
-              <button 
-                onClick={fetchRankings}
-                className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors border border-slate-600"
+              <button
+                onClick={clearCacheAndRefresh}
+                className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-orange-600 hover:bg-orange-700 rounded-lg transition-colors border border-orange-500"
+                title="Clear cache and get latest data from API"
               >
                 <RefreshCw size={18} />
-                <span className="hidden sm:inline">Refresh</span>
+                <span className="hidden sm:inline">Get Latest</span>
               </button>
             </div>
 
