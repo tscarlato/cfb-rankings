@@ -507,7 +507,7 @@ const App = () => {
             </div>
 
             {/* Team Rows */}
-            <div className="max-h-[calc(100vh-400px)] overflow-y-auto">
+            <div>
               {rankedTeams.map((team, index) => {
                 const rank = team.trueRank;
                 const logoUrl = getTeamLogo(team.name);
