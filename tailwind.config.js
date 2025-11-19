@@ -66,6 +66,18 @@ export default {
           "gradient-success": "var(--gradient-success)",
           "gradient-warning": "var(--gradient-warning)",
           "gradient-accent": "var(--gradient-accent)",
+          "gradient-maroon": "var(--gradient-maroon)",
+        },
+        boxShadow: {
+          'sm': 'var(--shadow-sm)',
+          'DEFAULT': 'var(--shadow)',
+          'lg': 'var(--shadow-lg)',
+          'xl': 'var(--shadow-xl)',
+          'brutal': 'var(--shadow-brutal)',
+        },
+        fontFamily: {
+          'display': ['Bebas Neue', 'Impact', 'sans-serif'],
+          'sans': ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
         },
         borderRadius: {
           lg: "var(--radius)",

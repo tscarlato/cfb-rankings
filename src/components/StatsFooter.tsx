@@ -4,39 +4,41 @@ interface StatsFooterProps {
 
 export const StatsFooter = ({ teamCount }: StatsFooterProps) => {
   return (
-    <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4 p-6">
-      <div className="bg-gradient-to-br from-primary/10 to-primary/5 backdrop-blur-sm rounded-xl p-6 shadow-md border border-primary/20">
-        <div className="flex items-center gap-4">
-          <div className="bg-primary/20 rounded-xl p-4 shadow-sm">
-            <i className="fas fa-users text-primary text-3xl"></i>
-          </div>
-          <div>
-            <p className="text-muted-foreground text-sm font-semibold uppercase tracking-wide">Total Teams</p>
-            <p className="text-3xl font-bold text-foreground">{teamCount}</p>
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-gradient-to-br from-success/10 to-success/5 backdrop-blur-sm rounded-xl p-6 shadow-md border border-success/20">
-        <div className="flex items-center gap-4">
-          <div className="bg-success/20 rounded-xl p-4 shadow-sm">
-            <i className="fas fa-calculator text-success text-3xl"></i>
-          </div>
-          <div>
-            <p className="text-muted-foreground text-sm font-semibold uppercase tracking-wide">Formula</p>
-            <p className="text-lg font-bold text-foreground">Custom Algorithm</p>
+    <div className="p-5 md:p-6 bg-muted/30 rounded-t-xl border-t-4 border-primary/20">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-gradient-primary text-white rounded-xl p-4 md:p-5 shadow-brutal border-2 border-primary/30 group hover:scale-105 transition-transform">
+          <div className="flex items-center gap-3 md:gap-4">
+            <div className="bg-white/20 rounded-lg p-3 shadow-lg">
+              <i className="fas fa-users text-2xl md:text-3xl"></i>
+            </div>
+            <div>
+              <p className="text-xs md:text-sm font-bold uppercase tracking-wide opacity-90">Total Teams</p>
+              <p className="text-2xl md:text-3xl font-display font-bold text-shadow-pop">{teamCount}</p>
+            </div>
           </div>
         </div>
-      </div>
 
-      <div className="bg-gradient-to-br from-warning/10 to-warning/5 backdrop-blur-sm rounded-xl p-6 shadow-md border border-warning/20">
-        <div className="flex items-center gap-4">
-          <div className="bg-warning/20 rounded-xl p-4 shadow-sm">
-            <i className="fas fa-star text-warning text-3xl"></i>
+        <div className="bg-gradient-success text-white rounded-xl p-4 md:p-5 shadow-brutal border-2 border-success/30 group hover:scale-105 transition-transform">
+          <div className="flex items-center gap-3 md:gap-4">
+            <div className="bg-white/20 rounded-lg p-3 shadow-lg">
+              <i className="fas fa-calculator text-2xl md:text-3xl"></i>
+            </div>
+            <div>
+              <p className="text-xs md:text-sm font-bold uppercase tracking-wide opacity-90">Formula</p>
+              <p className="text-base md:text-lg font-bold">Custom Algorithm</p>
+            </div>
           </div>
-          <div>
-            <p className="text-muted-foreground text-sm font-semibold uppercase tracking-wide">Data Source</p>
-            <p className="text-lg font-bold text-foreground">CFB Data API</p>
+        </div>
+
+        <div className="bg-gradient-accent text-secondary rounded-xl p-4 md:p-5 shadow-brutal border-2 border-accent/30 group hover:scale-105 transition-transform">
+          <div className="flex items-center gap-3 md:gap-4">
+            <div className="bg-secondary/20 rounded-lg p-3 shadow-lg">
+              <i className="fas fa-database text-2xl md:text-3xl"></i>
+            </div>
+            <div>
+              <p className="text-xs md:text-sm font-bold uppercase tracking-wide opacity-90">Data Source</p>
+              <p className="text-base md:text-lg font-bold">CFB Data API</p>
+            </div>
           </div>
         </div>
       </div>

@@ -24,10 +24,10 @@ interface TeamDetailsProps {
 
 export const TeamDetails = ({ team }: TeamDetailsProps) => {
   return (
-    <div className="bg-card rounded-2xl p-6 border-2 border-primary/20 shadow-lg">
-      <h3 className="font-bold text-2xl text-foreground mb-6 flex items-center gap-3">
-        <i className="fas fa-list text-primary text-xl"></i>
-        {team.name} Game Results
+    <div className="bg-card rounded-xl p-5 md:p-6 border-4 border-primary/20 shadow-brutal">
+      <h3 className="font-display text-2xl md:text-3xl text-primary mb-5 flex items-center gap-3 text-shadow-pop">
+        <i className="fas fa-list text-xl md:text-2xl"></i>
+        {team.name.toUpperCase()} GAME RESULTS
       </h3>
       <div className="space-y-3">
         {team.games.map((game, index) => {

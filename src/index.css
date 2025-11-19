@@ -1,59 +1,67 @@
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;800;900&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
+/* Hot Take Factory Design System
+   Bold, energetic, slightly irreverent college football vibe.
+   All colors MUST be HSL.
 */
 
 @layer base {
   :root {
-    --background: 214 32% 97%;
-    --foreground: 222 47% 11%;
+    /* Hot Take Factory - Light Mode (Gameday) */
+    --background: 46 100% 96%;
+    --foreground: 0 0% 17%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    --card-foreground: 0 0% 17%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
+    --popover-foreground: 0 0% 17%;
 
-    --primary: 231 48% 48%;
+    --primary: 17 100% 60%;
     --primary-foreground: 0 0% 100%;
-    --primary-glow: 231 70% 60%;
+    --primary-glow: 17 100% 70%;
 
-    --secondary: 214 32% 91%;
-    --secondary-foreground: 222 47% 11%;
+    --secondary: 0 100% 27%;
+    --secondary-foreground: 0 0% 100%;
 
-    --muted: 214 32% 91%;
-    --muted-foreground: 215 16% 47%;
+    --muted: 46 60% 90%;
+    --muted-foreground: 0 0% 45%;
 
-    --accent: 217 91% 60%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 51 100% 50%;
+    --accent-foreground: 0 0% 17%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --success: 142 76% 36%;
+    --success: 164 98% 17%;
     --success-foreground: 0 0% 100%;
 
     --warning: 38 92% 50%;
-    --warning-foreground: 0 0% 100%;
+    --warning-foreground: 0 0% 17%;
 
-    --border: 214 32% 88%;
-    --input: 214 32% 88%;
-    --ring: 231 48% 48%;
+    --border: 46 40% 88%;
+    --input: 46 40% 88%;
+    --ring: 17 100% 60%;
 
     --radius: 0.75rem;
 
-    --gradient-primary: linear-gradient(135deg, hsl(231 48% 48%), hsl(217 91% 60%));
-    --gradient-success: linear-gradient(135deg, hsl(142 76% 36%), hsl(142 76% 46%));
-    --gradient-warning: linear-gradient(135deg, hsl(38 92% 50%), hsl(0 84% 60%));
-    --gradient-accent: linear-gradient(135deg, hsl(217 91% 60%), hsl(231 70% 60%));
-    
-    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-    --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+    /* Bold, energetic gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(17 100% 60%), hsl(0 100% 27%));
+    --gradient-success: linear-gradient(135deg, hsl(164 98% 17%), hsl(164 98% 25%));
+    --gradient-warning: linear-gradient(135deg, hsl(51 100% 50%), hsl(38 92% 50%));
+    --gradient-accent: linear-gradient(135deg, hsl(51 100% 50%), hsl(17 100% 60%));
+    --gradient-maroon: linear-gradient(135deg, hsl(0 100% 27%), hsl(0 100% 20%));
+
+    /* Exaggerated shadows for 3D pop */
+    --shadow-sm: 0 2px 4px 0 rgb(0 0 0 / 0.1);
+    --shadow: 0 4px 8px -1px rgb(0 0 0 / 0.15), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 20px -3px rgb(0 0 0 / 0.2), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    --shadow-xl: 0 20px 30px -5px rgb(0 0 0 / 0.25), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+    --shadow-brutal: 6px 6px 0px rgb(0 0 0 / 0.25);
 
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5% 26%;
@@ -62,47 +70,68 @@ All colors MUST be HSL.
     --sidebar-accent: 240 5% 96%;
     --sidebar-accent-foreground: 240 6% 10%;
     --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217 91% 60%;
+    --sidebar-ring: 17 100% 60%;
   }
 
   .dark {
-    --background: 222 47% 11%;
-    --foreground: 210 40% 98%;
+    /* Hot Take Factory - Night Game Mode */
+    --background: 0 0% 8%;
+    --foreground: 46 100% 96%;
 
-    --card: 222 47% 11%;
-    --card-foreground: 210 40% 98%;
+    --card: 0 0% 12%;
+    --card-foreground: 46 100% 96%;
 
-    --popover: 222 47% 11%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 0 0% 12%;
+    --popover-foreground: 46 100% 96%;
 
-    --primary: 217 91% 60%;
-    --primary-foreground: 222 47% 11%;
-    --primary-glow: 231 70% 70%;
+    --primary: 17 100% 65%;
+    --primary-foreground: 0 0% 8%;
+    --primary-glow: 17 100% 75%;
 
-    --secondary: 217 33% 18%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 0 100% 35%;
+    --secondary-foreground: 46 100% 96%;
 
-    --muted: 217 33% 18%;
-    --muted-foreground: 215 20% 65%;
+    --muted: 0 0% 20%;
+    --muted-foreground: 0 0% 65%;
 
-    --accent: 217 91% 60%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 51 100% 55%;
+    --accent-foreground: 0 0% 8%;
 
-    --destructive: 0 63% 31%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 46 100% 96%;
 
-    --border: 217 33% 18%;
-    --input: 217 33% 18%;
-    --ring: 217 91% 60%;
-    
-    --sidebar-background: 240 6% 10%;
-    --sidebar-foreground: 240 5% 96%;
-    --sidebar-primary: 224 76% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 4% 16%;
-    --sidebar-accent-foreground: 240 5% 96%;
-    --sidebar-border: 240 4% 16%;
-    --sidebar-ring: 217 91% 60%;
+    --success: 164 98% 25%;
+    --success-foreground: 46 100% 96%;
+
+    --warning: 38 92% 55%;
+    --warning-foreground: 0 0% 8%;
+
+    --border: 0 0% 20%;
+    --input: 0 0% 20%;
+    --ring: 17 100% 65%;
+
+    /* Dark mode gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(17 100% 65%), hsl(0 100% 35%));
+    --gradient-success: linear-gradient(135deg, hsl(164 98% 25%), hsl(164 98% 30%));
+    --gradient-warning: linear-gradient(135deg, hsl(51 100% 55%), hsl(38 92% 55%));
+    --gradient-accent: linear-gradient(135deg, hsl(51 100% 55%), hsl(17 100% 65%));
+    --gradient-maroon: linear-gradient(135deg, hsl(0 100% 35%), hsl(0 100% 25%));
+
+    /* Adjusted shadows for dark mode */
+    --shadow-sm: 0 2px 4px 0 rgb(0 0 0 / 0.3);
+    --shadow: 0 4px 8px -1px rgb(0 0 0 / 0.4), 0 2px 4px -2px rgb(0 0 0 / 0.3);
+    --shadow-lg: 0 10px 20px -3px rgb(0 0 0 / 0.5), 0 4px 6px -4px rgb(0 0 0 / 0.3);
+    --shadow-xl: 0 20px 30px -5px rgb(0 0 0 / 0.6), 0 8px 10px -6px rgb(0 0 0 / 0.3);
+    --shadow-brutal: 6px 6px 0px rgb(0 0 0 / 0.5);
+
+    --sidebar-background: 0 0% 8%;
+    --sidebar-foreground: 46 100% 96%;
+    --sidebar-primary: 17 100% 65%;
+    --sidebar-primary-foreground: 0 0% 8%;
+    --sidebar-accent: 0 0% 15%;
+    --sidebar-accent-foreground: 46 100% 96%;
+    --sidebar-border: 0 0% 20%;
+    --sidebar-ring: 17 100% 65%;
   }
 }
 
@@ -118,16 +147,58 @@ All colors MUST be HSL.
 }
 
 @layer utilities {
+  /* Energetic animations */
   .animate-fade-in {
-    animation: fadeIn 0.5s ease-out;
+    animation: fadeIn 0.5s cubic-bezier(0.4, 0, 0.2, 1);
   }
-  
+
   .animate-slide-up {
-    animation: slideUp 0.4s ease-out;
+    animation: slideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   }
-  
+
   .animate-scale-in {
-    animation: scaleIn 0.3s ease-out;
+    animation: scaleIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .animate-pop {
+    animation: pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .animate-bounce-in {
+    animation: bounceIn 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  }
+
+  /* Paper grain texture */
+  .texture-paper {
+    background-image:
+      repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,.02) 2px, rgba(0,0,0,.02) 4px),
+      repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(0,0,0,.02) 2px, rgba(0,0,0,.02) 4px);
+  }
+
+  /* Diagonal stripes for headers (sports jersey vibe) */
+  .texture-stripes {
+    background-image: repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 10px,
+      rgba(255,255,255,.05) 10px,
+      rgba(255,255,255,.05) 20px
+    );
+  }
+
+  /* Chunky text shadow for BOLD headers */
+  .text-shadow-brutal {
+    text-shadow: 4px 4px 0px rgba(0, 0, 0, 0.2);
+  }
+
+  .text-shadow-pop {
+    text-shadow: 2px 2px 0px rgba(0, 0, 0, 0.15);
+  }
+
+  /* Utility for headings */
+  .font-display {
+    font-family: 'Bebas Neue', 'Impact', sans-serif;
+    letter-spacing: 0.02em;
   }
 }
 
@@ -159,6 +230,38 @@ All colors MUST be HSL.
     transform: scale(0.95);
   }
   to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes bounceIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+  70% {
+    transform: scale(0.9);
+  }
+  100% {
     opacity: 1;
     transform: scale(1);
   }

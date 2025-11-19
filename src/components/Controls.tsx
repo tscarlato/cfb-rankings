@@ -38,11 +38,11 @@ export const Controls = ({
 }: ControlsProps) => {
   const [showFormula, setShowFormula] = useState(false);
 
-  const selectClassName = "w-full px-4 py-3.5 border-2 border-border rounded-xl focus:ring-2 focus:ring-primary focus:border-primary font-semibold bg-card transition-all duration-200 hover:border-primary/50 shadow-sm";
-  const inputClassName = "w-full px-4 py-3.5 border-2 border-border rounded-xl focus:ring-2 focus:ring-primary focus:border-primary bg-card transition-all duration-200 hover:border-primary/50 shadow-sm";
+  const selectClassName = "w-full px-4 py-3 md:py-3.5 border-3 border-primary/40 rounded-xl focus:ring-4 focus:ring-primary/30 focus:border-primary font-bold bg-card transition-all duration-200 hover:border-primary shadow-lg text-sm md:text-base";
+  const inputClassName = "w-full px-4 py-3 md:py-3.5 border-3 border-primary/40 rounded-xl focus:ring-4 focus:ring-primary/30 focus:border-primary bg-card transition-all duration-200 hover:border-primary shadow-lg text-sm md:text-base font-bold";
 
   return (
-    <div className="bg-card rounded-2xl shadow-xl p-6 border border-border">
+    <div className="bg-card rounded-xl shadow-brutal p-5 md:p-6 border-4 border-primary/20 texture-paper">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-4">
         <div>
           <label className="block text-sm font-bold text-foreground mb-2 flex items-center gap-2">
@@ -112,16 +112,16 @@ export const Controls = ({
         </div>
       </div>
 
-      <div className="border-t-2 border-border pt-4">
+      <div className="border-t-4 border-primary/20 pt-4">
         <button
           onClick={() => setShowFormula(!showFormula)}
-          className="flex items-center gap-3 text-primary hover:text-primary-glow font-bold text-lg group transition-colors"
+          className="flex items-center gap-3 text-primary hover:text-primary-glow font-bold text-base md:text-lg group transition-all hover:scale-[1.02]"
         >
-          <div className="bg-primary/10 group-hover:bg-primary/20 rounded-lg p-2.5 transition-colors shadow-sm">
+          <div className="bg-primary/10 group-hover:bg-primary/20 rounded-lg p-2.5 transition-all shadow-lg group-hover:shadow-xl">
             <i className={`fas fa-chevron-${showFormula ? 'up' : 'down'} transition-transform duration-200`}></i>
           </div>
-          <span>Customize Ranking Formula</span>
-          <span className="text-sm font-normal text-muted-foreground">(Advanced)</span>
+          <span className="font-display text-xl md:text-2xl tracking-wide">CUSTOMIZE FORMULA</span>
+          <span className="text-xs md:text-sm font-normal text-muted-foreground uppercase">(For Nerds)</span>
         </button>
 
         {showFormula && (
