@@ -23,24 +23,111 @@ export const FormulaControls = ({ params, onParamsChange, onApply }: FormulaCont
     });
   };
 
+  const handlePreset = (presetName: string) => {
+    switch (presetName) {
+      case "just-win":
+        onParamsChange({
+          win_loss_multiplier: 1.5,
+          one_score_multiplier: 1.0,
+          two_score_multiplier: 1.0,
+          three_score_multiplier: 1.0,
+          strength_of_schedule_multiplier: 1.0,
+        });
+        break;
+      case "blowout":
+        onParamsChange({
+          win_loss_multiplier: 1.0,
+          one_score_multiplier: 0.5,
+          two_score_multiplier: 1.5,
+          three_score_multiplier: 2.0,
+          strength_of_schedule_multiplier: 1.0,
+        });
+        break;
+      case "schedule":
+        onParamsChange({
+          win_loss_multiplier: 1.0,
+          one_score_multiplier: 1.0,
+          two_score_multiplier: 1.0,
+          three_score_multiplier: 1.0,
+          strength_of_schedule_multiplier: 2.0,
+        });
+        break;
+    }
+  };
+
   const updateParam = (key: keyof FormulaParams, value: number) => {
     onParamsChange({ ...params, [key]: value });
   };
 
-  const inputClassName = "w-full px-4 py-3 border-2 border-primary/30 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary bg-white font-semibold transition-all duration-200 hover:border-primary/50 shadow-sm";
+  const inputClassName = "w-full px-4 py-3 border-3 border-primary/40 rounded-xl focus:ring-4 focus:ring-primary/30 focus:border-primary bg-card font-bold transition-all duration-200 hover:border-primary shadow-lg text-lg";
 
   return (
-    <div className="p-6 bg-gradient-to-br from-primary/5 to-accent/5 rounded-xl border-2 border-primary/20 shadow-lg">
-      <h3 className="text-xl font-bold text-foreground mb-6 flex items-center gap-3">
-        <i className="fas fa-sliders-h text-primary text-2xl"></i>
-        Formula Parameters
-      </h3>
+    <div className="p-5 md:p-6 bg-card rounded-xl border-4 border-primary/30 shadow-brutal texture-paper">
+      {/* Header */}
+      <div className="mb-5">
+        <h3 className="font-display text-3xl md:text-4xl text-primary mb-2 flex items-center gap-3 text-shadow-pop">
+          <i className="fas fa-sliders-h text-2xl md:text-3xl"></i>
+          TWEAK YOUR FORMULA
+        </h3>
+        <p className="text-sm md:text-base text-muted-foreground font-bold">
+          Quick presets or go full nerd mode
+        </p>
+      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-6">
+      {/* Preset Buttons - THE GOOD STUFF */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
+        <button
+          onClick={() => handlePreset("just-win")}
+          className="group relative bg-gradient-success text-white px-4 py-4 rounded-xl font-bold shadow-brutal hover:shadow-xl transition-all hover:scale-105 active:scale-95 border-2 border-success/30"
+        >
+          <div className="flex flex-col items-center gap-1">
+            <div className="flex items-center gap-2">
+              <i className="fas fa-trophy text-xl"></i>
+              <span className="font-display text-xl md:text-2xl tracking-wide">JUST WIN BABY</span>
+            </div>
+            <span className="text-xs font-normal opacity-90">W's are all that matter</span>
+          </div>
+        </button>
+
+        <button
+          onClick={() => handlePreset("blowout")}
+          className="group relative bg-gradient-warning text-secondary px-4 py-4 rounded-xl font-bold shadow-brutal hover:shadow-xl transition-all hover:scale-105 active:scale-95 border-2 border-accent/50"
+        >
+          <div className="flex flex-col items-center gap-1">
+            <div className="flex items-center gap-2">
+              <i className="fas fa-fire text-xl"></i>
+              <span className="font-display text-xl md:text-2xl tracking-wide">BLOWOUT CITY</span>
+            </div>
+            <span className="text-xs font-normal opacity-90">Domination only</span>
+          </div>
+        </button>
+
+        <button
+          onClick={() => handlePreset("schedule")}
+          className="group relative bg-gradient-maroon text-white px-4 py-4 rounded-xl font-bold shadow-brutal hover:shadow-xl transition-all hover:scale-105 active:scale-95 border-2 border-secondary/30"
+        >
+          <div className="flex flex-col items-center gap-1">
+            <div className="flex items-center gap-2">
+              <i className="fas fa-brain text-xl"></i>
+              <span className="font-display text-xl md:text-2xl tracking-wide">SCHEDULE SICKO</span>
+            </div>
+            <span className="text-xs font-normal opacity-90">SoS obsessed</span>
+          </div>
+        </button>
+      </div>
+
+      {/* Divider */}
+      <div className="flex items-center gap-3 mb-5">
+        <div className="flex-1 h-1 bg-gradient-to-r from-transparent via-primary/30 to-transparent"></div>
+        <span className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Or Customize</span>
+        <div className="flex-1 h-1 bg-gradient-to-r from-transparent via-primary/30 to-transparent"></div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
         <div>
-          <label className="block text-sm font-bold text-foreground mb-2">
-            Win/Loss Impact
-            <span className="text-xs text-muted-foreground font-normal ml-1">(default: 1.0)</span>
+          <label className="block text-sm font-bold text-foreground mb-2 uppercase tracking-wide">
+            <i className="fas fa-check-circle text-success mr-1"></i>
+            Win/Loss Weight
           </label>
           <input
             type="number"
@@ -53,9 +140,9 @@ export const FormulaControls = ({ params, onParamsChange, onApply }: FormulaCont
         </div>
 
         <div>
-          <label className="block text-sm font-bold text-foreground mb-2">
-            1-Score Game (≤8 pts)
-            <span className="text-xs text-muted-foreground font-normal ml-1">(default: 1.0)</span>
+          <label className="block text-sm font-bold text-foreground mb-2 uppercase tracking-wide">
+            <i className="fas fa-grip-lines text-warning mr-1"></i>
+            Close Games (≤8)
           </label>
           <input
             type="number"
@@ -68,9 +155,9 @@ export const FormulaControls = ({ params, onParamsChange, onApply }: FormulaCont
         </div>
 
         <div>
-          <label className="block text-sm font-bold text-foreground mb-2">
-            2-Score Game (9-16 pts)
-            <span className="text-xs text-muted-foreground font-normal ml-1">(default: 1.3)</span>
+          <label className="block text-sm font-bold text-foreground mb-2 uppercase tracking-wide">
+            <i className="fas fa-chart-line text-primary mr-1"></i>
+            2-Score (9-16)
           </label>
           <input
             type="number"
@@ -83,9 +170,9 @@ export const FormulaControls = ({ params, onParamsChange, onApply }: FormulaCont
         </div>
 
         <div>
-          <label className="block text-sm font-bold text-foreground mb-2">
-            3+ Score Game (&gt;16 pts)
-            <span className="text-xs text-muted-foreground font-normal ml-1">(default: 1.5)</span>
+          <label className="block text-sm font-bold text-foreground mb-2 uppercase tracking-wide">
+            <i className="fas fa-fire text-destructive mr-1"></i>
+            Blowouts (17+)
           </label>
           <input
             type="number"
@@ -97,10 +184,10 @@ export const FormulaControls = ({ params, onParamsChange, onApply }: FormulaCont
           />
         </div>
 
-        <div>
-          <label className="block text-sm font-bold text-foreground mb-2">
+        <div className="md:col-span-2 lg:col-span-1">
+          <label className="block text-sm font-bold text-foreground mb-2 uppercase tracking-wide">
+            <i className="fas fa-shield-alt text-secondary mr-1"></i>
             Strength of Schedule
-            <span className="text-xs text-muted-foreground font-normal ml-1">(default: 1.0)</span>
           </label>
           <input
             type="number"
@@ -113,35 +200,14 @@ export const FormulaControls = ({ params, onParamsChange, onApply }: FormulaCont
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-3 mb-6">
-        <button
-          onClick={onApply}
-          className="flex items-center gap-2 bg-gradient-primary text-white px-6 py-3 rounded-xl hover:opacity-90 transition-all font-bold shadow-lg hover:shadow-xl hover:scale-105 active:scale-95"
-        >
-          <i className="fas fa-calculator"></i>
-          Apply Formula
-        </button>
+      <div className="flex flex-wrap gap-3">
         <button
           onClick={handleReset}
-          className="flex items-center gap-2 bg-slate-600 text-white px-6 py-3 rounded-xl hover:bg-slate-700 transition-all font-bold shadow-lg hover:shadow-xl hover:scale-105 active:scale-95"
+          className="flex items-center gap-2 bg-muted text-foreground px-5 py-3 rounded-xl hover:bg-muted/80 transition-all font-bold shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 uppercase tracking-wide border-2 border-border"
         >
           <i className="fas fa-undo"></i>
-          Reset to Defaults
+          Reset
         </button>
-      </div>
-
-      <div className="p-5 bg-white rounded-xl border-2 border-primary/20 shadow-sm">
-        <p className="font-bold text-foreground mb-2 flex items-center gap-2">
-          <i className="fas fa-calculator text-primary"></i>
-          Current Formula:
-        </p>
-        <p className="text-sm text-muted-foreground font-mono mb-3">
-          (Win/Loss × Score Margin Multiplier) + ((Opponent Rank ÷ 100) × SoS Multiplier)
-        </p>
-        <p className="text-sm text-muted-foreground">
-          <strong className="text-foreground">Score Categories:</strong> 1-Score (≤8pts) = {params.one_score_multiplier}x, 
-          2-Score (9-16pts) = {params.two_score_multiplier}x, 3+ Score (&gt;16pts) = {params.three_score_multiplier}x
-        </p>
       </div>
     </div>
   );
