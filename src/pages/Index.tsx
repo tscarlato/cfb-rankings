@@ -41,7 +41,7 @@ const Index = () => {
   const [error, setError] = useState<string | null>(null);
   const [expandedTeam, setExpandedTeam] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [year, setYear] = useState("2024");
+  const [year, setYear] = useState("2025");
   const [week, setWeek] = useState("");
   const [seasonType, setSeasonType] = useState("regular");
   const [formulaParams, setFormulaParams] = useState<FormulaParams>({
