@@ -165,70 +165,94 @@ const Index = () => {
         </div>
 
         <div className="bg-card rounded-xl shadow-brutal overflow-hidden border-4 border-primary/20 animate-slide-up">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gradient-maroon text-white texture-stripes">
-                <tr>
-                  <th className="px-4 md:px-6 py-4 md:py-5 text-left font-display text-xl md:text-2xl tracking-wide">RANK</th>
-                  <th className="px-4 md:px-6 py-4 md:py-5 text-left font-display text-xl md:text-2xl tracking-wide">TEAM</th>
-                  <th className="px-4 md:px-6 py-4 md:py-5 text-center font-display text-xl md:text-2xl tracking-wide">RECORD</th>
-                  <th className="px-4 md:px-6 py-4 md:py-5 text-right font-display text-xl md:text-2xl tracking-wide">RATING</th>
-                  <th className="px-4 md:px-6 py-4 md:py-5 text-center font-display text-xl md:text-2xl tracking-wide"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredTeams.map((team, index) => {
-                  const rank = index + 1;
-                  const isExpanded = expandedTeam === team.name;
-                  
-                  return (
-                    <>
-                      <tr
-                        key={team.name}
-                        className="border-b-2 border-border/50 cursor-pointer transition-all duration-200 hover:bg-accent/10 group"
-                        onClick={() => toggleTeamDetails(team.name)}
-                      >
-                        <td className="px-4 md:px-6 py-4 md:py-5">
-                          <RankBadge rank={rank} />
-                        </td>
-                        <td className="px-4 md:px-6 py-4 md:py-5">
-                          <div className="flex items-center gap-3 md:gap-4">
-                            <div className="w-12 h-12 md:w-16 md:h-16 flex-shrink-0">
-                              <TeamLogo teamName={team.name} />
-                            </div>
-                            <span className="font-bold text-base md:text-xl text-foreground group-hover:text-primary transition-colors">
+          {/* Header - Desktop Only */}
+          <div className="hidden md:block bg-gradient-maroon text-white texture-stripes px-6 py-5">
+            <div className="grid grid-cols-12 gap-4 items-center">
+              <div className="col-span-1 font-display text-xl tracking-wide">RANK</div>
+              <div className="col-span-5 font-display text-xl tracking-wide">TEAM</div>
+              <div className="col-span-2 text-center font-display text-xl tracking-wide">RECORD</div>
+              <div className="col-span-2 text-right font-display text-xl tracking-wide">RATING</div>
+              <div className="col-span-2"></div>
+            </div>
+          </div>
+
+          {/* Team Cards */}
+          <div className="divide-y-2 divide-border/50">
+            {filteredTeams.map((team, index) => {
+              const rank = index + 1;
+              const isExpanded = expandedTeam === team.name;
+
+              return (
+                <div key={team.name}>
+                  {/* Team Card */}
+                  <div
+                    onClick={() => toggleTeamDetails(team.name)}
+                    className="cursor-pointer transition-all duration-200 hover:bg-accent/10 group p-4 md:px-6 md:py-5"
+                  >
+                    <div className="grid grid-cols-12 gap-3 md:gap-4 items-center">
+                      {/* Rank Badge - Ticket Stub Style */}
+                      <div className="col-span-2 md:col-span-1">
+                        <div className="relative">
+                          {/* Ticket stub with perforation */}
+                          <div className="border-r-2 border-dashed border-border/50 pr-2 md:pr-3">
+                            <RankBadge rank={rank} />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Team Info */}
+                      <div className="col-span-6 md:col-span-5">
+                        <div className="flex items-center gap-2 md:gap-3">
+                          <div className="w-10 h-10 md:w-12 md:h-12 flex-shrink-0">
+                            <TeamLogo teamName={team.name} />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="font-bold text-sm md:text-lg text-foreground group-hover:text-primary transition-colors truncate">
                               {team.name}
-                            </span>
+                            </div>
+                            {/* Mobile: Show record below name */}
+                            <div className="md:hidden text-xs text-muted-foreground font-semibold">
+                              {team.wins}-{team.losses}
+                            </div>
                           </div>
-                        </td>
-                        <td className="px-4 md:px-6 py-4 md:py-5 text-center">
-                          <span className="inline-flex items-center justify-center bg-gradient-to-br from-muted to-muted/70 px-4 py-2 md:px-5 md:py-2.5 rounded-xl font-bold text-sm md:text-base text-foreground min-w-[70px] md:min-w-[80px] shadow-lg border-2 border-border">
-                            {team.wins}-{team.losses}
-                          </span>
-                        </td>
-                        <td className="px-4 md:px-6 py-4 md:py-5 text-right">
-                          <span className="font-display text-2xl md:text-3xl font-bold text-primary">
-                            {team.ranking.toFixed(2)}
-                          </span>
-                        </td>
-                        <td className="px-4 md:px-6 py-4 md:py-5 text-center">
-                          <div className="inline-flex items-center justify-center bg-primary/10 group-hover:bg-primary/20 rounded-lg p-2 md:p-3 transition-all duration-200">
-                            <i className={`fas fa-chevron-${isExpanded ? 'up' : 'down'} text-primary text-sm md:text-base transition-transform duration-200 group-hover:scale-110`}></i>
-                          </div>
-                        </td>
-                      </tr>
-                      {isExpanded && (
-                        <tr className="bg-gradient-to-r from-muted/30 to-muted/10 animate-accordion-down">
-                          <td colSpan={5} className="px-6 py-6">
-                            <TeamDetails team={team} />
-                          </td>
-                        </tr>
-                      )}
-                    </>
-                  );
-                })}
-              </tbody>
-            </table>
+                        </div>
+                      </div>
+
+                      {/* Record - Desktop Only */}
+                      <div className="hidden md:block md:col-span-2 text-center">
+                        <span className="inline-flex items-center justify-center bg-gradient-to-br from-muted to-muted/70 px-4 py-2 rounded-lg font-bold text-sm text-foreground shadow-md border-2 border-border">
+                          {team.wins}-{team.losses}
+                        </span>
+                      </div>
+
+                      {/* Rating */}
+                      <div className="col-span-3 md:col-span-2 text-right">
+                        <div className="text-xs text-muted-foreground font-bold uppercase tracking-wide mb-0.5 md:hidden">
+                          Rating
+                        </div>
+                        <span className="font-display text-xl md:text-2xl font-bold text-primary">
+                          {team.ranking.toFixed(2)}
+                        </span>
+                      </div>
+
+                      {/* Expand Button */}
+                      <div className="col-span-1 md:col-span-2 text-right">
+                        <div className="inline-flex items-center justify-center bg-primary/10 group-hover:bg-primary/20 rounded-lg p-2 md:p-3 transition-all duration-200">
+                          <i className={`fas fa-chevron-${isExpanded ? 'up' : 'down'} text-primary text-xs md:text-sm transition-transform duration-200 group-hover:scale-110`}></i>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Expanded Details */}
+                  {isExpanded && (
+                    <div className="bg-gradient-to-r from-muted/30 to-muted/10 animate-accordion-down px-4 py-5 md:px-6 md:py-6">
+                      <TeamDetails team={team} />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
 
           <StatsFooter teamCount={filteredTeams.length} />
