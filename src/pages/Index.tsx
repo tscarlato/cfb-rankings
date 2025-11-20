@@ -201,12 +201,12 @@ const Index = () => {
                       </div>
 
                       {/* Team Info */}
-                      <div className="col-span-6 md:col-span-5">
+                      <div className="col-span-6 md:col-span-5 overflow-hidden pl-1">
                         <div className="flex items-center gap-2 md:gap-3">
-                          <div className="w-10 h-10 md:w-12 md:h-12 flex-shrink-0">
+                          <div className="w-8 h-8 md:w-12 md:h-12 flex-shrink-0">
                             <TeamLogo teamName={team.name} />
                           </div>
-                          <div className="min-w-0 flex-1">
+                          <div className="min-w-0 flex-1 overflow-hidden">
                             <div className="font-bold text-sm md:text-lg text-foreground group-hover:text-primary transition-colors truncate">
                               {team.name}
                             </div>
